@@ -61,6 +61,10 @@ v2_EXPECTED_RESPONSE = {
             "rel": "self",
             "href": "",     # Will get filled in after initialization
         },
+        {
+            "href": "http://192.168.1.127:%s/v2.0/extensions",
+            "rel": "extensions"
+        },
         v2_HTML_DESCRIPTION,
         v2_PDF_DESCRIPTION
     ],
@@ -91,6 +95,10 @@ v3_EXPECTED_RESPONSE = {
         {
             "rel": "self",
             "href": "",     # Will get filled in after initialization
+        },
+        {
+            "href": "http://192.168.1.127:%s/v2.0/extensions",
+            "rel": "extensions"
         }
     ],
     "media-types": v3_MEDIA_TYPES
@@ -124,6 +132,8 @@ class VersionTestCase(tests.TestCase):
         for link in response['links']:
             if link['rel'] == 'self':
                 link['href'] = port
+            elif link['rel'] == 'extensions':
+                link['href'] = port + "extensions"
 
     def test_public_versions(self):
         client = self.client(self.public_app)
@@ -276,16 +286,19 @@ vnd.openstack.identity-v2.0+xml"/>
   </media-types>
   <links>
     <link href="http://localhost:%%(port)s/v2.0/" rel="self"/>
+    <link href="http://localhost:%%(port)s/v2.0/extensions" rel="extensions"/>
     <link href="http://docs.openstack.org/api/openstack-identity-service/\
 2.0/content/" type="text/html" rel="describedby"/>
     <link href="http://docs.openstack.org/api/openstack-identity-service/\
 2.0/identity-dev-guide-2.0.pdf" type="application/pdf" rel="describedby"/>
   </links>
   <link href="http://localhost:%%(port)s/v2.0/" rel="self"/>
+    <link href="http://localhost:%%(port)s/v2.0/extensions" rel="extensions"/>
   <link href="http://docs.openstack.org/api/openstack-identity-service/\
 2.0/content/" type="text/html" rel="describedby"/>
   <link href="http://docs.openstack.org/api/openstack-identity-service/\
 2.0/identity-dev-guide-2.0.pdf" type="application/pdf" rel="describedby"/>
+
 </version>
 """
 
@@ -303,6 +316,7 @@ vnd.openstack.identity-v3+xml"/>
   </media-types>
   <links>
     <link href="http://localhost:%%(port)s/v3/" rel="self"/>
+    <link href="http://localhost:%%(port)s/v3/extensions" rel="extensions"/>
   </links>
 </version>
 """

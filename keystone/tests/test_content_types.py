@@ -1363,3 +1363,19 @@ class XmlTestCase(RestfulTestCase, CoreApiTests):
             token=token,
             expected_status=400)
         self.assertValidErrorResponse(r)
+
+
+#TODO(ayoung): drop this and instead run all of the other tests via html
+class VersionTestCase(tests.TestCase):
+    def setUp(self):
+        super(VersionTestCase, self).setUp()
+        self.load_backends()
+        self.public_app = self.loadapp('keystone', 'main')
+        self.public_server = self.serveapp('keystone', name='main')
+
+    def test_public_version_v3_html(self):
+        client = self.client(self.public_app)
+        headers = {'Accept': 'text/html'}
+        resp = client.get('/v3/', headers)
+        self.assertEqual(resp.status_int, 200)
+        self.assertTrue('text/html' in resp.headers.get('Content-Type'))
