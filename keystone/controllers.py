@@ -13,6 +13,7 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+import copy
 
 from keystone.common import extension
 from keystone.common import wsgi
@@ -32,32 +33,43 @@ _VERSIONS = []
 
 class Extensions(wsgi.Application):
     """Base extensions controller to be extended by public and admin API's."""
+    extensions = None
 
-    #extend in subclass to specify the set of extensions
-    @property
-    def extensions(self):
-        return None
+    def __init__(self, extensions):
+        self.extensions = extensions
 
     def get_extensions_info(self, context):
-        return {'extensions': {'values': self.extensions.values()}}
+        extensions = copy.deepcopy(self.extensions)
+        for name in extensions:
+            extensions[name]['links'].append(
+                {'rel': 'self',
+                 'type': 'text/html',
+                 'href': 'extensions/%s' % extensions[name]['alias']})
+
+        return {'extensions': {'values': extensions.values()}}
 
     def get_extension_info(self, context, extension_alias):
         try:
-            return {'extension': self.extensions[extension_alias]}
+            ext = copy.deepcopy(self.extensions[extension_alias])
+            ext['links'].append({
+                'rel': 'self',
+                'type': 'text/html',
+                #TODO (ayoung)  convert from relative url to absolute
+                'href': ext['alias']})
+
+            return {'extension': ext}
         except KeyError:
             raise exception.NotFound(target=extension_alias)
 
 
 class AdminExtensions(Extensions):
-    @property
-    def extensions(self):
-        return extension.ADMIN_EXTENSIONS
+    def __init__(self):
+        Extensions.__init__(self, extension.ADMIN_EXTENSIONS)
 
 
 class PublicExtensions(Extensions):
-    @property
-    def extensions(self):
-        return extension.PUBLIC_EXTENSIONS
+    def __init__(self):
+        Extensions.__init__(self, extension.PUBLIC_EXTENSIONS)
 
 
 def register_version(version):
@@ -70,6 +82,9 @@ class Version(wsgi.Application):
         self.endpoint_url_type = version_type
 
         super(Version, self).__init__()
+
+    def _get_extension_url(self, version):
+        return self._get_identity_url(version) + "extensions"
 
     def _get_identity_url(self, version='v2.0'):
         """Returns a URL to keystone's own endpoint."""
@@ -90,6 +105,9 @@ class Version(wsgi.Application):
                     {
                         'rel': 'self',
                         'href': self._get_identity_url(version='v2.0'),
+                    }, {
+                        'rel': 'extensions',
+                        'href': self._get_extension_url(version='v2.0'),
                     }, {
                         'rel': 'describedby',
                         'type': 'text/html',
@@ -123,6 +141,10 @@ class Version(wsgi.Application):
                     {
                         'rel': 'self',
                         'href': self._get_identity_url(version='v3'),
+                    },
+                    {
+                        'rel': 'extensions',
+                        'href': self._get_extension_url(version='v3'),
                     }
                 ],
                 'media-types': [
