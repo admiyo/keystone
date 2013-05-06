@@ -404,3 +404,12 @@ def configure():
     for method_name in CONF.auth.methods:
         if method_name not in _DEFAULT_AUTH_METHODS:
             register_str(method_name, group='auth')
+
+    # Key Distribution Server
+    register_str('master_key', group='kds',
+                 default='file:///etc/keystone/kds.mkey')
+    register_str('enctype', group='kds', default='AES')
+    register_str('hashtype', group='kds', default='SHA256')
+    register_int('ticket_lifetime', group='kds', default='3600')
+    register_str('driver', group='kds',
+                 default='keystone.contrib.kds.backends.kvs.KDS')

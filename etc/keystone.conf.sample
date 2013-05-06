@@ -285,6 +285,9 @@ paste.filter_factory = keystone.contrib.stats:StatsExtension.factory
 [filter:access_log]
 paste.filter_factory = keystone.contrib.access:AccessLogMiddleware.factory
 
+[filter:kds_extension]
+paste.filter_factory = keystone.contrib.kds:KDSExtension.factory
+
 [app:public_service]
 paste.app_factory = keystone.service:public_app_factory
 
@@ -298,7 +301,7 @@ paste.app_factory = keystone.service:admin_app_factory
 pipeline = access_log sizelimit url_normalize token_auth admin_token_auth xml_body json_body ec2_extension user_crud_extension public_service
 
 [pipeline:admin_api]
-pipeline = access_log sizelimit url_normalize token_auth admin_token_auth xml_body json_body ec2_extension s3_extension crud_extension admin_service
+pipeline = access_log sizelimit url_normalize token_auth admin_token_auth xml_body json_body ec2_extension kds_extension s3_extension crud_extension admin_service
 
 [pipeline:api_v3]
 pipeline = access_log sizelimit url_normalize token_auth admin_token_auth xml_body json_body ec2_extension s3_extension service_v3
