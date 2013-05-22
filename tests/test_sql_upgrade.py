@@ -37,6 +37,10 @@ from keystone.common.sql import migration
 from keystone import config
 from keystone import test
 
+from keystone.contrib import kds
+from keystone.contrib.kds.backends import sql as kds_sql
+
+
 import default_fixtures
 
 
@@ -807,10 +811,17 @@ class SqlUpgradeTests(test.TestCase):
         self.assertEqual(ref.url, endpoint['url'])
         self.assertEqual(ref.legacy_endpoint_id, legacy_endpoint_id)
         self.assertEqual(ref.extra, '{}')
-
+ 
     def test_upgrade_kds(self):
-        self.assertEqual(self.schema.version, 0, "DB is at version 0")
-        self.upgrade(23)
+        driver = kds_sql.KDS()
+        #instead of creating, attach to the existing
+        #controlled database as it already has the version table.
+        schema = versioning_api.ControlledSchema(
+            self.engine,
+            kds_sql._find_migrate_repo())
+        self.assertEqual(schema.version, 0, "DB is at version 0")
+        self._migrate(1, repository=kds_sql._find_migrate_repo(), downgrade=False, schema=schema)
+        self.assertEqual(schema.version, 1, "DB is at version 1")
         self.assertTableColumns("kds_keys", ["id", "key"])
 
     def populate_user_table(self, with_pass_enab=False,
@@ -943,14 +954,16 @@ class SqlUpgradeTests(test.TestCase):
     def downgrade(self, *args, **kwargs):
         self._migrate(*args, downgrade=True, **kwargs)
 
-    def _migrate(self, version, repository=None, downgrade=False):
+    def _migrate(self, version, repository=None, downgrade=False, schema=None):
         repository = repository or self.repo_path
         err = ''
-        version = versioning_api._migrate_version(self.schema,
+        if schema is None:
+            schema = self.schema
+        version = versioning_api._migrate_version(schema,
                                                   version,
                                                   not downgrade,
                                                   err)
-        changeset = self.schema.changeset(version)
+        changeset = schema.changeset(version)
         for ver, change in changeset:
-            self.schema.runchange(ver, change, changeset.step)
-        self.assertEqual(self.schema.version, version)
+            schema.runchange(ver, change, changeset.step)
+        self.assertEqual(schema.version, version)

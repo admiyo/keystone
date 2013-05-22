@@ -15,9 +15,25 @@
 # under the License.
 
 import base64
+import os
+import sys
+
+from migrate.versioning import api as versioning_api
 
 from keystone.common import sql
+from keystone import config
 
+try:
+    from migrate.versioning import exceptions as versioning_exceptions
+except ImportError:
+    try:
+        # python-migration changed location of exceptions after 1.6.3
+        # See LP Bug #717467
+        from migrate import exceptions as versioning_exceptions
+    except ImportError:
+        sys.exit('python-migrate is not installed. Exiting.')
+
+CONF = config.CONF
 
 class Keys(sql.ModelBase, sql.DictBase):
     __tablename__ = 'kds_keys'
@@ -27,6 +43,9 @@ class Keys(sql.ModelBase, sql.DictBase):
 
 
 class KDS(sql.Base):
+
+    def db_sync(self):
+        kds_db_sync()
 
     @sql.handle_conflicts(type='kds_keys')
     def set_shared_key(self, kds_id, key):
@@ -45,3 +64,33 @@ class KDS(sql.Base):
         d = key_ref.to_dict()
         k = d.pop('key', None)
         return base64.b64decode(k['key_v1'])
+
+##These are copied from common.  The functions in Common need to be refactored to allow
+#them to find and work with repositories stored in extensions
+def db_version():
+    repo_path = _find_migrate_repo()
+    try:
+        return versioning_api.db_version(CONF.sql.connection, repo_path)
+    except versioning_exceptions.DatabaseNotControlledError:
+        return db_version_control(0)
+
+def db_version_control(version=None):
+    repo_path = _find_migrate_repo()
+    versioning_api.version_control(CONF.sql.connection, repo_path, version)
+    return version
+
+def _find_migrate_repo():
+    """Get the path for the migrate repository."""
+    path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                        'migrate_repo')
+    assert os.path.exists(path)
+    return path
+
+def kds_db_sync(version=None):
+    current_version = db_version()
+    repo_path = _find_migrate_repo()
+    if version is None or version > current_version:
+        return versioning_api.upgrade(CONF.sql.connection, repo_path, version)
+    else:
+        return versioning_api.downgrade(
+            CONF.sql.connection, repo_path, version)
