@@ -27,6 +27,7 @@ To run these tests against a live database:
 """
 import copy
 import json
+import sys
 import uuid
 
 from migrate.versioning import api as versioning_api
@@ -610,6 +611,8 @@ class SqlUpgradeTests(test.TestCase):
         test_project2 = json.loads(r.fetchone()['data'])
         self.assertEqual(len(test_project2['roles']), 1)
         self.assertIn(role2['id'], test_project2['roles'])
+        sys.stderr.write("Test user %s in project2 %s has role2 %s: \n" %(user['id'], project2['id'], role2['id']))
+        sys.stderr.write("roles = %s \n"  % test_project2['roles'] )
 
         # Test for user in project has role in user_project_metadata
         # Migration 17 does not properly migrate this data, so this should
@@ -629,8 +632,13 @@ class SqlUpgradeTests(test.TestCase):
         self.engine.execute(cmd)
         # End Scaffolding
 
+
         session.commit()
 
+        sys.stderr.write("project[id]  =%s\n"%project['id'])
+        sys.stderr.write("project2[id]  =%s\n"%project2['id'])
+        sys.stderr.write("role[id]  =%s\n"%role['id'])
+        sys.stderr.write("role2[id]  =%s\n"%role2['id'])
         # Migrate to 20
         self.upgrade(20)
 
@@ -652,9 +660,13 @@ class SqlUpgradeTests(test.TestCase):
                             'user_id=:user and project_id=:project',
                             {'user': user['id'], 'project': project2['id']})
         role_ids = json.loads(r.fetchone()['data'])['roles']
-        self.assertEqual(len(role_ids), 2)
+        sys.stderr.write("project_id =%s\n"%project2['id'])
+        
+        sys.stderr.write("role_ids =\n")
+        sys.stderr.write(json.dumps(role_ids))
         self.assertIn(CONF.member_role_id, role_ids)
         self.assertIn(role2['id'], role_ids)
+        self.assertEqual(len(role_ids), 2)
 
         self.assertTableDoesNotExist('metadata')
 
