@@ -52,10 +52,9 @@ def get_auth_method(method_name):
 class AuthInfo(object):
     """Encapsulation of "auth" request."""
 
-    def __init__(self, context, auth=None):
+    def __init__(self, auth=None):
         self.identity_api = identity.Manager()
         self.trust_api = trust.Manager()
-        self.context = context
         self.auth = auth
         self._scope_data = (None, None, None)
         # self._scope_data is (domain_id, project_id, trust_ref)
@@ -277,30 +276,34 @@ class Auth(controller.V3Controller):
         self.token_controllers_ref = token.controllers.Auth()
         config.setup_authentication()
 
+    #TODO(ayoung): move this logic into core
+    def authenticate_and_create_token(self, context, auth, include_catalog):
+        auth_info = AuthInfo(auth=auth)
+        auth_context = {'extras': {}, 'method_names': [], 'bind': {}}
+        self.authenticate(context, auth_info, auth_context)
+        if auth_context.get('access_token_id'):
+            auth_info.set_scope(None, auth_context['project_id'], None)
+        self._check_and_set_default_scoping(auth_info, auth_context)
+        domain_id, project_id, trust = auth_info.get_scope()
+        method_names = auth_info.get_method_names()
+        method_names += auth_context.get('method_names', [])
+        # make sure the list is unique
+        method_names = list(set(method_names))
+        expires_at = auth_context.get('expires_at')
+        # NOTE(morganfainberg): define this here so it is clear what the
+        # argument is during the issue_v3_token provider call.
+        metadata_ref = None
+        token_id, token_data = self.token_provider_api.issue_v3_token(
+            auth_context['user_id'], method_names, expires_at, project_id,
+            domain_id, auth_context, trust, metadata_ref, include_catalog)
+        return token_id, token_data
+
     def authenticate_for_token(self, context, auth=None):
         """Authenticate user and issue a token."""
-        include_catalog = 'nocatalog' not in context['query_string']
-
         try:
-            auth_info = AuthInfo(context, auth=auth)
-            auth_context = {'extras': {}, 'method_names': [], 'bind': {}}
-            self.authenticate(context, auth_info, auth_context)
-            if auth_context.get('access_token_id'):
-                auth_info.set_scope(None, auth_context['project_id'], None)
-            self._check_and_set_default_scoping(auth_info, auth_context)
-            (domain_id, project_id, trust) = auth_info.get_scope()
-            method_names = auth_info.get_method_names()
-            method_names += auth_context.get('method_names', [])
-            # make sure the list is unique
-            method_names = list(set(method_names))
-            expires_at = auth_context.get('expires_at')
-            # NOTE(morganfainberg): define this here so it is clear what the
-            # argument is during the issue_v3_token provider call.
-            metadata_ref = None
-
-            (token_id, token_data) = self.token_provider_api.issue_v3_token(
-                auth_context['user_id'], method_names, expires_at, project_id,
-                domain_id, auth_context, trust, metadata_ref, include_catalog)
+            include_catalog = 'nocatalog' not in context['query_string']
+            token_id, token_data = self.authenticate_and_create_token(
+                auth, include_catalog)
 
             return render_token_data_response(token_id, token_data,
                                               created=True)
