@@ -158,6 +158,21 @@ class Version(wsgi.Application):
                 ]
             }
 
+            for name in ['endpoints', 'users']:
+                versions['v2.0']['links'].append(
+                {'rel': 'module',
+                 'href':  self._get_identity_url(version='v2.0') + name})
+                versions['v3']['links'].append(
+                {'rel': 'module',
+                 'href': self._get_identity_url(version='v3') + name})
+
+            for name in ['roles','groups', 'domains','projects',
+                         'credentials', 'services']:
+                versions['v3']['links'].append(
+                {'rel': 'module',
+                 'href': self._get_identity_url(version='v3') + name})
+
+
         return versions
 
     def get_versions(self, context):
