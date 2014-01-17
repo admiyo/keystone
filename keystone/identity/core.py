@@ -192,7 +192,8 @@ def domains_configured(f):
 
 
 @dependency.provider('identity_api')
-@dependency.requires('assignment_api', 'credential_api', 'token_api')
+@dependency.requires('assignment_api', 'credential_api', 'token_api',
+                     'revoke_api')
 class Manager(manager.Manager):
     """Default pivot point for the Identity backend.
 
@@ -425,6 +426,15 @@ class Manager(manager.Manager):
 
     @notifications.deleted('group')
     @domains_configured
+    def revoke_tokens_for_group(self, group_id, domain_scope):
+        #TODO(ayoung): revoke based on group and roleids instead
+        user_ids = []
+        for u in self.list_users_in_group(group_id, domain_scope):
+            user_ids.append(u['id'])
+            self.revoke_api.revoke_by_user(u['id'])
+        if CONF.token.revoke_by_id:
+            self.token_api.delete_tokens_for_users(user_ids)
+
     def delete_group(self, group_id, domain_scope=None):
         domain_id, driver = self._get_domain_id_and_driver(domain_scope)
         # As well as deleting the group, we need to invalidate
@@ -432,9 +442,7 @@ class Manager(manager.Manager):
         # We get the list of users before we attempt the group
         # deletion, so that we can remove these tokens after we know
         # the group deletion succeeded.
-        user_ids = [
-            u['id'] for u in self.list_users_in_group(group_id, domain_scope)]
-        self.token_api.delete_tokens_for_users(user_ids)
+        self.revoke_tokens_for_group(group_id, domain_scope)
         driver.delete_group(group_id)
 
     @domains_configured

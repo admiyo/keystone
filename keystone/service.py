@@ -24,6 +24,7 @@ from keystone.common import cache
 from keystone.common import wsgi
 from keystone import config
 from keystone.contrib import endpoint_filter
+from keystone.contrib import revoke
 from keystone import controllers
 from keystone import credential
 from keystone import identity
@@ -54,6 +55,7 @@ def load_backends():
         catalog_api=catalog.Manager(),
         credential_api=credential.Manager(),
         endpoint_filter_api=endpoint_filter.Manager(),
+        revoke_api=revoke.Manager(),
         identity_api=_IDENTITY_API,
         policy_api=policy.Manager(),
         token_api=token.Manager(),
@@ -135,5 +137,6 @@ def v3_app_factory(global_conf, **local_conf):
     # Add in the v3 version api
     v3routers.append(routers.VersionV3('admin'))
     v3routers.append(routers.VersionV3('public'))
+    v3routers.append(routers.ExtensionV3())
     # TODO(ayoung): put token routes here
     return wsgi.ComposingRouter(mapper, v3routers)

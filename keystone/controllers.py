@@ -60,6 +60,12 @@ class PublicExtensions(Extensions):
         return extension.PUBLIC_EXTENSIONS
 
 
+class V3Extensions(Extensions):
+    @property
+    def extensions(self):
+        return extension.V3_EXTENSIONS
+
+
 def register_version(version):
     _VERSIONS.append(version)
 
@@ -123,7 +129,13 @@ class Version(wsgi.Application):
                     {
                         'rel': 'self',
                         'href': self._get_identity_url(version='v3'),
+                    },
+                    {
+                        'rel': 'extensions',
+                        'href': (self._get_identity_url(version='v3') +
+                                 'extensions'),
                     }
+
                 ],
                 'media-types': [
                     {

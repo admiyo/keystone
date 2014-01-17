@@ -372,7 +372,7 @@ class DomainV3(controller.V3Controller):
         return self.assignment_api.delete_domain(domain_id)
 
 
-@dependency.requires('assignment_api')
+@dependency.requires('assignment_api', 'revoke_api')
 class ProjectV3(controller.V3Controller):
     collection_name = 'projects'
     member_name = 'project'
@@ -414,6 +414,7 @@ class ProjectV3(controller.V3Controller):
 
     @controller.protected()
     def delete_project(self, context, project_id):
+        self.revoke_api.revoke_by_project(project_id)
         return self.assignment_api.delete_project(project_id)
 
 

@@ -18,6 +18,7 @@ import uuid
 
 from keystone import assignment
 from keystone import auth
+from keystone.common import environment
 from keystone import config
 from keystone import exception
 from keystone.openstack.common import timeutils
@@ -76,6 +77,7 @@ class AuthTest(tests.TestCase):
         self.empty_context = {'environment': {}}
 
         self.controller = token.controllers.Auth()
+        environment.use_eventlet(monkeypatch_thread=False)
 
     def assertEqualTokens(self, a, b):
         """Assert that two tokens are equal.

@@ -47,6 +47,22 @@ class Extension(wsgi.ComposableRouter):
                        conditions=dict(method=['GET']))
 
 
+class ExtensionV3(wsgi.ComposableRouter):
+    def __init__(self, is_admin=True):
+        self.controller = controllers.V3Extensions()
+
+    def add_routes(self, mapper):
+        extensions_controller = self.controller
+        mapper.connect('/extensions',
+                       controller=extensions_controller,
+                       action='get_extensions_info',
+                       conditions=dict(method=['GET']))
+        mapper.connect('/extensions/{extension_alias}',
+                       controller=extensions_controller,
+                       action='get_extension_info',
+                       conditions=dict(method=['GET']))
+
+
 class VersionV2(wsgi.ComposableRouter):
     def __init__(self, description):
         self.description = description
