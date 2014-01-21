@@ -277,6 +277,9 @@
 # Revocation-List specific cache time-to-live (TTL) in seconds.
 # revocation_cache_time = 3600
 
+[revoke]
+#driver = keystone.contrib.revoke.backends.fake.Revoke
+
 [cache]
 # Global cache functionality toggle.
 # enabled = False

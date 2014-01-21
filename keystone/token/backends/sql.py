@@ -17,9 +17,13 @@
 import copy
 
 from keystone.common import sql
+from keystone import config
 from keystone import exception
 from keystone.openstack.common import timeutils
 from keystone import token
+
+
+CONF = config.CONF
 
 
 class TokenModel(sql.ModelBase, sql.DictBase):
@@ -165,6 +169,8 @@ class Token(sql.Base, token.Driver):
 
     def _list_tokens(self, user_id, tenant_id=None, trust_id=None,
                      consumer_id=None):
+        if not CONF.token.revoke_by_id:
+            return []
         if trust_id:
             return self._list_tokens_for_trust(trust_id)
         if consumer_id:

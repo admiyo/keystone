@@ -189,6 +189,8 @@ class Token(token.Driver):
 
     def _list_tokens(self, user_id, tenant_id=None, trust_id=None,
                      consumer_id=None):
+        if not CONF.token.revoke_by_id:
+            return []
         tokens = []
         user_key = self._prefix_user_id(user_id)
         user_record = self.client.get(user_key) or ""

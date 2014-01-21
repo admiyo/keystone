@@ -45,7 +45,8 @@ def calc_default_domain():
 
 
 @dependency.provider('assignment_api')
-@dependency.requires('credential_api', 'identity_api', 'token_api')
+@dependency.requires('credential_api', 'identity_api',
+                     'revoke_api', 'token_api')
 class Manager(manager.Manager):
     """Default pivot point for the Assignment backend.
 
@@ -461,7 +462,12 @@ class Manager(manager.Manager):
         self.driver.delete_grant(role_id, user_id, group_id, domain_id,
                                  project_id, inherited_to_projects)
         user_ids = []
-        if group_id is not None:
+        if group_id is None:
+            self.revoke_api.revoke_by_grant(user_id=user_id,
+                                            role_id=role_id,
+                                            domain_id=domain_id,
+                                            project_id=project_id)
+        else:
             try:
                 for user in self.identity_api.list_users_in_group(group_id,
                                                                   domain_id):
@@ -470,6 +476,10 @@ class Manager(manager.Manager):
                         # for invalidating tokens below, so extract them here.
 
                         user_ids.append(user['id'])
+                        self.revoke_api.revoke_by_grant(user_id=user['id'],
+                                                        role_id=role_id,
+                                                        domain_id=domain_id,
+                                                        project_id=project_id)
             except exception.GroupNotFound:
                 LOG.debug(_('Group %s not found, no tokens to invalidate.'),
                           group_id)
