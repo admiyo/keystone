@@ -25,6 +25,7 @@ from keystone.contrib.oauth1 import controllers
 from keystone import exception
 from keystone.openstack.common.db.sqlalchemy import migration
 from keystone.openstack.common import importutils
+from keystone import tests
 from keystone.tests import test_v3
 
 
@@ -32,11 +33,11 @@ CONF = config.CONF
 
 
 class OAuth1Tests(test_v3.RestfulTestCase):
-
     EXTENSION_NAME = 'oauth1'
     EXTENSION_TO_ADD = 'oauth1_extension'
 
     def setup_database(self):
+
         super(OAuth1Tests, self).setup_database()
         package_name = '.'.join((contrib.__name__, self.EXTENSION_NAME))
         package = importutils.import_module(package_name)
@@ -356,6 +357,12 @@ class AccessTokenCRUDTests(OAuthFlowTests):
 
 class AuthTokenTests(OAuthFlowTests):
 
+    def config_files(self):
+        conf_files = super(AuthTokenTests, self).config_files()
+        conf_files.append(tests.dirs.tests(
+            'test_token_provider_revoke_by_id_false.conf'))
+        return conf_files
+
     def test_keystone_token_is_valid(self):
         self.test_oauth_flow()
         headers = {'X-Subject-Token': self.keystone_token_id,
@@ -468,12 +475,14 @@ class AuthTokenTests(OAuthFlowTests):
             expected_status=403)
 
     def test_delete_keystone_tokens_by_consumer_id(self):
+        CONF.token.revoke_by_id = True
         self.test_oauth_flow()
         self.token_api.get_token(self.keystone_token_id)
         self.token_api.delete_tokens(self.user_id,
                                      consumer_id=self.consumer['key'])
         self.assertRaises(exception.TokenNotFound, self.token_api.get_token,
                           self.keystone_token_id)
+        CONF.token.revoke_by_id = True
 
 
 class MaliciousOAuth1Tests(OAuth1Tests):

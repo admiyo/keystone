@@ -49,7 +49,7 @@ class UnsupportedTokenVersionException(Exception):
     pass
 
 
-@dependency.requires('token_api')
+@dependency.requires('revoke_api', 'token_api')
 @dependency.provider('token_provider_api')
 class Manager(manager.Manager):
     """Default pivot point for the token provider backend.
@@ -115,14 +115,106 @@ class Manager(manager.Manager):
         self._is_valid_token(token)
         return token
 
+    def check_revocation_v2(self, token):
+        def build_token_values(token_data):
+            token_values = {
+                'expires_at': timeutils.normalize_time(
+                    timeutils.parse_isotime(token_data['expires']))}
+
+            token_values['user_id'] = token_data.get('user_id')
+
+            project = token_data.get('tenant')
+            if project is not None:
+                token_values['project_id'] = project['id']
+            else:
+                token_values['project_id'] = None
+
+            token_values['user_domain_id'] = CONF.identity.default_domain_id
+            token_values['project_domain_id'] = CONF.identity.default_domain_id
+
+            trust = token_data.get('trust')
+            if trust is None:
+                token_values['trust_id'] = None
+                token_values['trustor_id'] = None
+                token_values['trustee_id'] = None
+            else:
+                token_values['trust_id'] = trust['id']
+                token_values['trustor_id'] = trust['trustor_id']
+                token_values['trustee_id'] = trust['trustee_id']
+
+            return token_values
+
+        token_data = token['access']['token']
+        token_values = build_token_values(token_data)
+        self.revoke_api.check_token(token_values)
+
     def validate_v2_token(self, token_id, belongs_to=None):
         unique_id = self.token_api.unique_id(token_id)
         # NOTE(morganfainberg): Ensure we never use the long-form token_id
         # (PKI) as part of the cache_key.
         token = self._validate_v2_token(unique_id)
+        self.check_revocation_v2(token)
         self._token_belongs_to(token, belongs_to)
         self._is_valid_token(token)
         return token
+
+    def check_revocation(self, token):
+        def build_token_values(token_data):
+            token_values = {
+                'expires_at': timeutils.normalize_time(
+                    timeutils.parse_isotime(token_data['expires_at'])),
+                'issued_at': timeutils.normalize_time(
+                    timeutils.parse_isotime(token_data['issued_at']))}
+
+            user = token_data.get('user')
+            if user is not None:
+                token_values['user_id'] = user['id']
+                token_values['user_domain_id'] = user['domain']['id']
+            else:
+                token_values['user_id'] = None
+                token_values['user_domain_id'] = None
+
+            project = token_data.get('project', token_data.get('tenant'))
+            if project is not None:
+                token_values['project_id'] = project['id']
+                token_values['project_domain_id'] = project['domain']['id']
+            else:
+                token_values['project_id'] = None
+                token_values['project_domain_id'] = None
+
+            role_list = []
+            roles = token_data.get('roles')
+            if roles is not None:
+                for role in roles:
+                    role_list.append(role['id'])
+            token_values['roles'] = role_list
+
+            trust = token_data.get('OS-TRUST:trust')
+            if trust is None:
+                token_values['trust_id'] = None
+                token_values['trustor_id'] = None
+                token_values['trustee_id'] = None
+            else:
+                token_values['trust_id'] = trust['id']
+                token_values['trustor_id'] = trust['trustor_user']['id']
+                token_values['trustee_id'] = trust['trustee_user']['id']
+
+            oauth1 = token_data.get('OS-OAUTH1')
+            if oauth1 is None:
+                token_values['consumer_id'] = None
+                token_values['access_token_id'] = None
+            else:
+                token_values['consumer_id'] = oauth1['consumer_id']
+                token_values['access_token_id'] = oauth1['access_token_id']
+            return token_values
+
+        token_data = token.get('token')
+        #TODO(ayoung) fix tests that submit (now) invalid bogus tokens.
+        #This check is only here to prevent test breakage.
+        if token_data is None:
+            return
+        token_values = build_token_values(token_data)
+        self.revoke_api.check_token(token_values)
 
     def validate_v3_token(self, token_id):
         unique_id = self.token_api.unique_id(token_id)
@@ -176,7 +268,6 @@ class Manager(manager.Manager):
         """Verify the token is valid format and has not expired."""
 
         current_time = timeutils.normalize_time(timeutils.utcnow())
-
         try:
             # Get the data we need from the correct location (V2 and V3 tokens
             # differ in structure, Try V3 first, fall back to V2 second)
@@ -187,12 +278,16 @@ class Manager(manager.Manager):
                 expires_at = token_data['token']['expires']
             expiry = timeutils.normalize_time(
                 timeutils.parse_isotime(expires_at))
-            if current_time < expiry:
-                # Token is has not expired and has not been revoked.
-                return None
         except Exception:
             LOG.exception(_('Unexpected error or malformed token determining '
                             'token expiry: %s'), token)
+            raise exception.TokenNotFound(_('Failed to validate token'))
+
+        if current_time < expiry:
+            self.check_revocation(token)
+            # Token is has not expired and has not been revoked.
+            return None
+        raise exception.TokenNotFound(_('Failed to validate token'))
 
         raise exception.TokenNotFound(_("The token is malformed or expired."))
 

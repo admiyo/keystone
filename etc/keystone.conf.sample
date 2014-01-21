@@ -303,6 +303,13 @@
 # Revocation-List specific cache time-to-live (TTL) in seconds.
 # revocation_cache_time = 3600
 
+#Revoke Tokens By Token Identifier.  This method will be phased out in favor
+#of revocation events.
+#revoke_by_id = True
+
+[revoke]
+#driver = keystone.contrib.revoke.backends.fake.Revoke
+
 [cache]
 # Global cache functionality toggle.
 # enabled = False

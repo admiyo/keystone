@@ -37,7 +37,8 @@ class ExternalAuthNotApplicable(Exception):
 
 
 @dependency.requires('assignment_api', 'catalog_api', 'identity_api',
-                     'token_api', 'token_provider_api', 'trust_api')
+                     'token_api', 'token_provider_api', 'revoke_api',
+                     'trust_api')
 class Auth(controller.V2Controller):
 
     @controller.v2_deprecated
@@ -407,6 +408,7 @@ class Auth(controller.V2Controller):
         Identical to ``validate_token``, except does not return a response.
 
         """
+        #TODO(ayoung) validate against revocation API
         belongs_to = context['query_string'].get('belongsTo')
         self.token_provider_api.check_v2_token(token_id, belongs_to)
 
@@ -421,6 +423,7 @@ class Auth(controller.V2Controller):
 
         """
         belongs_to = context['query_string'].get('belongsTo')
+        #TODO(ayoung) validate against revocation API
         return self.token_provider_api.validate_v2_token(token_id, belongs_to)
 
     @controller.v2_deprecated
@@ -428,6 +431,11 @@ class Auth(controller.V2Controller):
         """Delete a token, effectively invalidating it for authz."""
         # TODO(termie): this stuff should probably be moved to middleware
         self.assert_admin(context)
+        token_ref = self.token_api.get_token(token_id)
+        #TODO(ayoung) what if we get a V3 Token?
+        #Move this to the token provider for unified logic
+        self.revoke_api.revoke_by_expiration(token_ref['user_id'],
+                                             token_ref['expires'])
         self.token_api.delete_token(token_id)
 
     @controller.v2_deprecated

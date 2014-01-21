@@ -83,7 +83,13 @@ FILE_OPTIONS = {
                    default='keystone.token.backends.sql.Token'),
         cfg.BoolOpt('caching', default=True),
         cfg.IntOpt('revocation_cache_time', default=3600),
-        cfg.IntOpt('cache_time', default=None)],
+        cfg.IntOpt('cache_time', default=None),
+        #Revoke Tokens By Token Identifier.  This method will be
+        #phased out in favor of revocation events.
+        cfg.BoolOpt('revoke_by_id', default=True)],
+    'revoke': [
+        cfg.StrOpt('driver',
+                   default='keystone.contrib.revoke.backends.fake.Revoke')],
     'cache': [
         cfg.StrOpt('config_prefix', default='cache.keystone'),
         cfg.IntOpt('expiration_time', default=600),

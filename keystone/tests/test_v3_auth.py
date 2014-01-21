@@ -92,14 +92,9 @@ class TestAuthInfo(test_v3.RestfulTestCase):
                           method_name)
 
 
-class TestPKITokenAPIs(test_v3.RestfulTestCase):
-    def config_files(self):
-        conf_files = super(TestPKITokenAPIs, self).config_files()
-        conf_files.append(tests.dirs.tests('test_pki_token_provider.conf'))
-        return conf_files
+class TokenAPITests(object):
 
-    def setUp(self):
-        super(TestPKITokenAPIs, self).setUp()
+    def doSetUp(self):
         auth_data = self.build_authentication_request(
             username=self.user['name'],
             user_domain_id=self.domain_id,
@@ -375,20 +370,27 @@ class TestPKITokenAPIs(test_v3.RestfulTestCase):
         r = self.get('/auth/tokens?nocatalog', headers=headers)
         self.assertValidProjectScopedTokenResponse(r, require_catalog=False)
 
-    def test_revoke_token(self):
-        headers = {'X-Subject-Token': self.get_scoped_token()}
-        self.delete('/auth/tokens', headers=headers, expected_status=204)
-        self.head('/auth/tokens', headers=headers, expected_status=404)
-        # make sure we have a CRL
-        r = self.get('/auth/tokens/OS-PKI/revoked')
-        self.assertIn('signed', r.result)
+
+class TestPKITokenAPIs(test_v3.RestfulTestCase, TokenAPITests):
+    def config_files(self):
+        conf_files = super(TestPKITokenAPIs, self).config_files()
+        conf_files.append(tests.dirs.tests('test_pki_token_provider.conf'))
+        return conf_files
+
+    def setUp(self):
+        super(TestPKITokenAPIs, self).setUp()
+        self.doSetUp()
 
 
-class TestUUIDTokenAPIs(TestPKITokenAPIs):
+class TestUUIDTokenAPIs(test_v3.RestfulTestCase, TokenAPITests):
     def config_files(self):
         conf_files = super(TestUUIDTokenAPIs, self).config_files()
         conf_files.append(tests.dirs.tests('test_uuid_token_provider.conf'))
         return conf_files
+
+    def setUp(self):
+        super(TestUUIDTokenAPIs, self).setUp()
+        self.doSetUp()
 
     def test_v3_token_id(self):
         auth_data = self.build_authentication_request(
@@ -552,8 +554,14 @@ class TestTokenRevokeSelfAndAdmin(test_v3.RestfulTestCase):
                     token=adminB_token)
 
 
-class TestTokenRevoking(test_v3.RestfulTestCase):
+class TestTokenRevokeById(test_v3.RestfulTestCase):
     """Test token revocation on the v3 Identity API."""
+
+    def config_files(self):
+        conf_files = super(TestTokenRevokeById, self).config_files()
+        conf_files.append(tests.dirs.tests(
+            'test_token_provider_revoke_by_id_false.conf'))
+        return conf_files
 
     def setUp(self):
         """Setup for Token Revoking Test Cases.
@@ -578,7 +586,7 @@ class TestTokenRevoking(test_v3.RestfulTestCase):
         - User1 has role2 assigned to domainA
 
         """
-        super(TestTokenRevoking, self).setUp()
+        super(TestTokenRevokeById, self).setUp()
 
         # Start by creating a couple of domains and projects
         self.domainA = self.new_domain_ref()
@@ -720,46 +728,16 @@ class TestTokenRevoking(test_v3.RestfulTestCase):
                   headers={'X-Subject-Token': token},
                   expected_status=404)
 
-    def test_deleting_role_revokes_token(self):
-        """Test deleting a role revokes token.
-
-        Test Plan:
-
-        - Add some additional test data, namely:
-            - A third project (project C)
-            - Three additional users - user4 owned by domainB and user5 and 6
-              owned by domainA (different domain ownership should not affect
-              the test results, just provided to broaden test coverage)
-            - User5 is a member of group1
-            - Group1 gets an additional assignment - role1 on projectB as
-              well as its existing role1 on projectA
-            - User4 has role2 on Project C
-            - User6 has role1 on projectA and domainA
-        - This allows us to create 5 tokens by virtue of different types of
-          role assignment:
-          - user1, scoped to ProjectA by virtue of user role1 assignment
-          - user5, scoped to ProjectB by virtue of group role1 assignment
-          - user4, scoped to ProjectC by virtue of user role2 assignment
-          - user6, scoped to ProjectA by virtue of user role1 assignment
-          - user6, scoped to DomainA by virtue of user role1 assignment
-        - role1 is then deleted
-        - Check the tokens on Project A and B, and DomainA are revoked,
-          but not the one for Project C
-
-        """
-        # Add the additional test data
+    def role_data_fixtures(self):
         self.projectC = self.new_project_ref(domain_id=self.domainA['id'])
         self.assignment_api.create_project(self.projectC['id'], self.projectC)
-        self.user4 = self.new_user_ref(
-            domain_id=self.domainB['id'])
+        self.user4 = self.new_user_ref(domain_id=self.domainB['id'])
         self.user4['password'] = uuid.uuid4().hex
         self.identity_api.create_user(self.user4['id'], self.user4)
-
         self.user5 = self.new_user_ref(
             domain_id=self.domainA['id'])
         self.user5['password'] = uuid.uuid4().hex
         self.identity_api.create_user(self.user5['id'], self.user5)
-
         self.user6 = self.new_user_ref(
             domain_id=self.domainA['id'])
         self.user6['password'] = uuid.uuid4().hex
@@ -778,6 +756,34 @@ class TestTokenRevoking(test_v3.RestfulTestCase):
         self.assignment_api.create_grant(self.role1['id'],
                                          user_id=self.user6['id'],
                                          domain_id=self.domainA['id'])
+
+    def test_deleting_role_revokes_token(self):
+        """Test deleting a role revokes token.
+
+          Add some additional test data, namely:
+        - A third project (project C)
+        - Three additional users - user4 owned by domainB and user5 and 6
+          owned by domainA (different domain ownership should not affect
+          the test results, just provided to broaden test coverage)
+        - User5 is a member of group1
+        - Group1 gets an additional assignment - role1 on projectB as
+          well as its existing role1 on projectA
+        - User4 has role2 on Project C
+        - User6 has role1 on projectA and domainA
+        - This allows us to create 5 tokens by virtue of different types of
+          role assignment:
+          - user1, scoped to ProjectA by virtue of user role1 assignment
+          - user5, scoped to ProjectB by virtue of group role1 assignment
+          - user4, scoped to ProjectC by virtue of user role2 assignment
+          - user6, scoped to ProjectA by virtue of user role1 assignment
+          - user6, scoped to DomainA by virtue of user role1 assignment
+        - role1 is then deleted
+        - Check the tokens on Project A and B, and DomainA are revoked,
+          but not the one for Project C
+
+    """
+
+        self.role_data_fixtures()
 
         # Now we are ready to start issuing requests
         auth_data = self.build_authentication_request(
@@ -1083,13 +1089,13 @@ class TestTokenRevoking(test_v3.RestfulTestCase):
         self.head('/auth/tokens',
                   headers={'X-Subject-Token': token2},
                   expected_status=204)
-        # Adding user2 to a group should invalidate token
+        # Adding user2 to a group should not invalidate token
         self.put('/groups/%(group_id)s/users/%(user_id)s' % {
             'group_id': self.group2['id'],
             'user_id': self.user2['id']})
         self.head('/auth/tokens',
                   headers={'X-Subject-Token': token2},
-                  expected_status=404)
+                  expected_status=204)
 
     def test_removing_role_assignment_does_not_affect_other_users(self):
         """Revoking a role from one user should not affect other users."""
@@ -1161,6 +1167,95 @@ class TestTokenRevoking(test_v3.RestfulTestCase):
 
         # Make sure that we get a NotFound(404) when heading that role.
         self.head(role_path, expected_status=404)
+
+    def test_revoke_token(self):
+        headers = {'X-Subject-Token': self.get_scoped_token()}
+        self.head('/auth/tokens', headers=headers, expected_status=204)
+        self.delete('/auth/tokens', headers=headers, expected_status=204)
+        self.head('/auth/tokens', headers=headers, expected_status=404)
+
+
+class TestTokenRevokeApi(TestTokenRevokeById):
+    """Test token revocation on the v3 Identity API."""
+    def config_files(self):
+        conf_files = super(TestTokenRevokeApi, self).config_files()
+        conf_files.append(tests.dirs.tests(
+            'test_token_provider_revoke_by_id_false.conf'))
+        return conf_files
+
+    def assertProjectInList(self, events, project_id):
+        found = False
+        for event in events:
+            if event['project_id'] == project_id:
+                found = True
+        self.assertTrue(found)
+
+    def assertDomainInList(self, events, domain_id):
+        found = False
+        for event in events:
+            if event['domain_id'] == domain_id:
+                found = True
+        self.assertTrue(found)
+
+    def test_list_delete_project_shows_in_event_list(self):
+        self.role_data_fixtures()
+        events = self.get('/OS-REVOKE/events',
+                          expected_status=200).json_body['events']
+        self.assertEqual(0, len(events))
+        self.delete(
+            '/projects/%(project_id)s' % {'project_id': self.projectA['id']})
+        events = self.get('/OS-REVOKE/events',
+                          expected_status=200).json_body['events']
+
+        self.assertProjectInList(events, self.projectA['id'])
+
+    def test_disable_domain_shows_in_event_list(self):
+        events = self.get('/OS-REVOKE/events',
+                          expected_status=200).json_body['events']
+        self.assertEqual(0, len(events))
+        disable_body = {"domain": {"enabled": False}}
+        self.patch(
+            '/domains/%(project_id)s' % {'project_id': self.domainA['id']},
+            body=disable_body)
+
+        events = self.get('/OS-REVOKE/events',
+                          expected_status=200).json_body['events']
+
+        self.assertDomainInList(events, self.domainA['id'])
+
+    def assertUserAndExpiryInList(self, events, user_id, expires_at):
+        found = False
+        for e in events:
+            if e['user_id'] == user_id and e['expires_at'] == expires_at:
+                found = True
+        self.assertTrue(found)
+
+    def test_list_delete_token_shows_in_event_list(self):
+
+        self.role_data_fixtures()
+        events = self.get('/OS-REVOKE/events',
+                          expected_status=200).json_body['events']
+        self.assertEqual(0, len(events))
+
+        scoped_token = self.get_scoped_token()
+        headers = {'X-Subject-Token': scoped_token}
+        auth = self.build_authentication_request(token=scoped_token)
+        response = self.post('/auth/tokens', body=auth)
+        token2 = response.json_body['token']
+        headers2 = {'X-Subject-Token': response.headers['X-Subject-Token']}
+
+        self.head('/auth/tokens', headers=headers, expected_status=204)
+        self.head('/auth/tokens', headers=headers2, expected_status=204)
+
+        self.delete('/auth/tokens', headers=headers, expected_status=204)
+        events = self.get('/OS-REVOKE/events',
+                          expected_status=200).json_body['events']
+        self.assertEqual(1, len(events))
+        self.assertUserAndExpiryInList(events,
+                                       token2['user']['id'],
+                                       token2['expires_at'])
+        self.head('/auth/tokens', headers=headers, expected_status=404)
+        self.head('/auth/tokens', headers=headers2, expected_status=404)
 
 
 class TestAuthExternalDisabled(test_v3.RestfulTestCase):
@@ -2014,6 +2109,12 @@ class TestTrustOptional(test_v3.RestfulTestCase):
 
 
 class TestTrustAuth(TestAuthInfo):
+    def config_files(self):
+        conf_files = super(TestTrustAuth, self).config_files()
+        conf_files.append(tests.dirs.tests(
+            'test_token_provider_revoke_by_id_false.conf'))
+        return conf_files
+
     def setUp(self):
         self.opt_in_group('trust', enabled=True)
         super(TestTrustAuth, self).setUp()
@@ -2351,6 +2452,43 @@ class TestTrustAuth(TestAuthInfo):
                          self.project['id'])
         self.assertEqual(r.result['token']['project']['name'],
                          self.project['name'])
+
+    def assertTrustTokensRevoked(self, trust_id):
+        revocation_response = self.get('/OS-REVOKE/events',
+                                       expected_status=200)
+        revocation_events = revocation_response.json_body['events']
+        found = False
+        for event in revocation_events:
+            if event.get('OS-TRUST:trust_id') == trust_id:
+                found = True
+        self.assertTrue(found)
+
+    def test_delete_trust_revokes_tokens(self):
+        ref = self.new_trust_ref(
+            trustor_user_id=self.user_id,
+            trustee_user_id=self.trustee_user_id,
+            project_id=self.project_id,
+            impersonation=False,
+            expires=dict(minutes=1),
+            role_ids=[self.role_id])
+        del ref['id']
+        r = self.post('/OS-TRUST/trusts', body={'trust': ref})
+        trust = self.assertValidTrustResponse(r)
+        trust_id = trust['id']
+        auth_data = self.build_authentication_request(
+            user_id=self.trustee_user['id'],
+            password=self.trustee_user['password'],
+            trust_id=trust_id)
+        r = self.post('/auth/tokens', body=auth_data)
+        self.assertValidProjectTrustScopedTokenResponse(
+            r, self.trustee_user)
+        trust_token = r.headers['X-Subject-Token']
+        self.delete('/OS-TRUST/trusts/%(trust_id)s' % {
+            'trust_id': trust_id},
+            expected_status=204)
+        headers = {'X-Subject-Token': trust_token}
+        self.head('/auth/tokens', headers=headers, expected_status=404)
+        self.assertTrustTokensRevoked(trust_id)
 
     def test_delete_trust(self):
         ref = self.new_trust_ref(
