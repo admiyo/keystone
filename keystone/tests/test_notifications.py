@@ -228,6 +228,21 @@ class NotificationsForEntities(test_v3.RestfulTestCase):
         self.identity_api.delete_user(user_ref['id'])
         self._assertLastNotify(user_ref['id'], 'deleted', 'user')
 
+    def test_delete_domain(self):
+        domain_ref = self.new_domain_ref()
+        self.identity_api.create_domain(domain_ref['id'], domain_ref)
+        domain_ref['enabled'] = False
+        self.identity_api.update_domain(domain_ref['id'], domain_ref)
+        self.identity_api.delete_domain(domain_ref['id'])
+        self._assertLastNotify(domain_ref['id'], 'deleted', 'domain')
+
+    def test_disable_domain(self):
+        domain_ref = self.new_domain_ref()
+        self.identity_api.create_domain(domain_ref['id'], domain_ref)
+        domain_ref['enabled'] = False
+        self.identity_api.update_domain(domain_ref['id'], domain_ref)
+        self._assertLastNotify(domain_ref['id'], 'disabled', 'domain')
+
     def test_update_group(self):
         group_ref = self.new_group_ref(domain_id=self.domain_id)
         self.identity_api.create_group(group_ref['id'], group_ref)

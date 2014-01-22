@@ -25,7 +25,7 @@ from keystone.openstack.common.notifier import api as notifier_api
 LOG = log.getLogger(__name__)
 # NOTE(gyee): actions that can be notified. One must update this list whenever
 # a new action is supported.
-ACTIONS = frozenset(['created', 'deleted', 'updated'])
+ACTIONS = frozenset(['created', 'deleted', 'disabled', 'updated'])
 # resource types that can be notified
 SUBSCRIBERS = {}
 
@@ -39,9 +39,10 @@ class ManagerNotificationWrapper(object):
     :param resource_type: type of resource being affected
     :param host: host of the resource (optional)
     """
-    def __init__(self, operation, resource_type, host=None):
+    def __init__(self, operation, resource_type, host=None, arg_index=1):
         self.operation = operation
         self.resource_type = resource_type
+        self.arg_index = arg_index
         self.host = host
 
     def __call__(self, f):
@@ -55,7 +56,7 @@ class ManagerNotificationWrapper(object):
                 _send_notification(
                     self.operation,
                     self.resource_type,
-                    args[1],  # f(self, resource_id, ...)
+                    args[self.arg_index],  # f(self, resource_id, ...)
                     self.host)
             return result
 
@@ -70,6 +71,11 @@ def created(*args, **kwargs):
 def updated(*args, **kwargs):
     """Decorator to send notifications for ``Manager.update_*`` methods."""
     return ManagerNotificationWrapper('updated', *args, **kwargs)
+
+
+def disabled(*args, **kwargs):
+    """Decorator to send notifications for ``Manager.update_*`` methods."""
+    return ManagerNotificationWrapper('disabled', *args, **kwargs)
 
 
 def deleted(*args, **kwargs):
