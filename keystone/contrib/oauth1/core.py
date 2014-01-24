@@ -30,6 +30,7 @@ from keystone.common import extension
 from keystone.common import manager
 from keystone import config
 from keystone import exception
+from keystone import notifications
 
 
 RequestValidator = oauth1.RequestValidator
@@ -153,6 +154,27 @@ class Manager(manager.Manager):
 
     def __init__(self):
         super(Manager, self).__init__(CONF.oauth1.driver)
+
+    @notifications.created("OS-OAUTH1:consumer")
+    def create_consumer(self, consumer_ref):
+        return self.driver.create_consumer(consumer_ref)
+
+    @notifications.updated("OS-OAUTH1:consumer")
+    def update_consumer(self, consumer_id, consumer_ref):
+        return self.driver.update_consumer(consumer_id, consumer_ref)
+
+    @notifications.deleted("OS-OAUTH1:consumer")
+    def delete_consumer(self, consumer_id):
+        return self.driver.delete_consumer(consumer_id)
+
+    @notifications.created("OS-OAUTH1:access_token")
+    def create_access_token(self, request_id, access_token_duration):
+        return self.driver.create_access_token(request_id,
+                                               access_token_duration)
+
+    @notifications.deleted("OS-OAUTH1:access_token", arg_index=2)
+    def delete_access_token(self, user_id, access_token_id):
+        return self.driver.delete_access_token(user_id, access_token_id)
 
 
 @six.add_metaclass(abc.ABCMeta)

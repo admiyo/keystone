@@ -288,6 +288,7 @@ class Manager(manager.Manager):
     def get_domain_by_name(self, domain_name):
         return self.driver.get_domain_by_name(domain_name)
 
+    @notifications.created('domain')
     def create_domain(self, domain_id, domain):
         ret = self.driver.create_domain(domain_id, domain)
         if SHOULD_CACHE(ret):
@@ -309,6 +310,7 @@ class Manager(manager.Manager):
         self.get_domain_by_name.invalidate(self, ret['name'])
         return ret
 
+    @notifications.deleted('domain')
     def delete_domain(self, domain_id):
         # explicitly forbid deleting the default domain (this should be a
         # carefully orchestrated manual process involving configuration
@@ -456,21 +458,21 @@ class Manager(manager.Manager):
     def delete_grant(self, role_id, user_id=None, group_id=None,
                      domain_id=None, project_id=None,
                      inherited_to_projects=False):
+        self.driver.delete_grant(role_id, user_id, group_id, domain_id,
+                                 project_id, inherited_to_projects)
         user_ids = []
         if group_id is not None:
-            # NOTE(morganfainberg): The user ids are the important part for
-            # invalidating tokens below, so extract them here.
             try:
                 for user in self.identity_api.list_users_in_group(group_id,
                                                                   domain_id):
                     if user['id'] != user_id:
+                        # NOTE(morganfainberg): The user ids are used
+                        # for invalidating tokens below, so extract them here.
+
                         user_ids.append(user['id'])
             except exception.GroupNotFound:
                 LOG.debug(_('Group %s not found, no tokens to invalidate.'),
                           group_id)
-
-        self.driver.delete_grant(role_id, user_id, group_id, domain_id,
-                                 project_id, inherited_to_projects)
         if user_id is not None:
             user_ids.append(user_id)
         self.token_api.delete_tokens_for_users(user_ids)

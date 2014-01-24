@@ -255,6 +255,14 @@ class NotificationsForEntities(test_v3.RestfulTestCase):
         self.trust_api.delete_trust(trust_ref['id'])
         self._assertLastNotify(trust_ref['id'], 'deleted', 'OS-TRUST:trust')
 
+    def test_delete_domain(self):
+        domain_ref = self.new_domain_ref()
+        self.identity_api.create_domain(domain_ref['id'], domain_ref)
+        domain_ref['enabled'] = False
+        self.identity_api.update_domain(domain_ref['id'], domain_ref)
+        self.identity_api.delete_domain(domain_ref['id'])
+        self._assertLastNotify(domain_ref['id'], 'deleted', 'domain')
+
     def test_disable_domain(self):
         domain_ref = self.new_domain_ref()
         self.identity_api.create_domain(domain_ref['id'], domain_ref)
