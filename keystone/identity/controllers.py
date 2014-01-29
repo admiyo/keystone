@@ -121,7 +121,10 @@ class User(controller.V2Controller):
 
     # CRUD extension
     @controller.v2_deprecated
+
+
     def create_user(self, context, user):
+
         user = self._normalize_OSKSADM_password_on_request(user)
         user = self.normalize_username_in_request(user)
         user = self._normalize_dict(user)
@@ -140,8 +143,9 @@ class User(controller.V2Controller):
             self.assignment_api.get_project(default_project_id)
             user['default_project_id'] = default_project_id
 
-        user_id = uuid.uuid4().hex
+        
         user_ref = self._normalize_domain_id(context, user.copy())
+        user_id = self._unique_identifier(user_ref['domain_id'])
         user_ref['id'] = user_id
         new_user_ref = self.identity_api.v3_to_v2_user(
             self.identity_api.create_user(user_id, user_ref))
@@ -271,7 +275,7 @@ class UserV3(controller.V3Controller):
     def create_user(self, context, user):
         self._require_attribute(user, 'name')
 
-        ref = self._assign_unique_id(self._normalize_dict(user))
+        ref = self._assign_domain_specific_unique_id(self._normalize_dict(user))
         ref = self._normalize_domain_id(context, ref)
         ref = self.identity_api.create_user(ref['id'], ref)
         return UserV3.wrap_member(context, ref)

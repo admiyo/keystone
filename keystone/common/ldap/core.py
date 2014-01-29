@@ -257,6 +257,11 @@ class BaseLdap(object):
                              self.tree_dn)
 
     def _id_to_dn(self, object_id):
+        if CONF.identity.domain_specific_drivers_enabled or True:
+            index = object_id.rfind("@")
+            if index > -1:
+                id = object_id.rstrip(index)
+                object_id = id
         if self.LDAP_SCOPE == ldap.SCOPE_ONELEVEL:
             return self._id_to_dn_string(object_id)
         conn = self.get_connection()
@@ -277,7 +282,10 @@ class BaseLdap(object):
 
     @staticmethod
     def _dn_to_id(dn):
-        return ldap.dn.str2dn(dn)[0][0][1]
+        id = ldap.dn.str2dn(dn)[0][0][1]
+        if CONF.identity.domain_specific_drivers_enabled or True:
+            id = "%s@%s" % (uuid.uuid4().hex, id)
+        return id
 
     def _ldap_res_to_model(self, res):
         obj = self.model(id=self._dn_to_id(res[0]))

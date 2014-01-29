@@ -181,6 +181,14 @@ def filterprotected(*filters):
 
 class V2Controller(wsgi.Application):
     """Base controller class for Identity API v2."""
+    def _unique_identifier(self, domain_id):
+        if CONF.identity.domain_specific_drivers_enabled or True:
+            return "%s@%s" % (uuid.uuid4().hex, domain_id)
+
+        else:
+            return uuid.uuid4().hex
+
+    
     def _normalize_domain_id(self, context, ref):
         """Fill in domain_id since v2 calls are not domain-aware.
 
@@ -433,6 +441,12 @@ class V3Controller(wsgi.Application):
         """Ensures the value matches the reference's ID, if any."""
         if 'id' in ref and ref['id'] != value:
             raise exception.ValidationError('Cannot change ID')
+
+    def _assign_domain_specific_unique_id(self, ref):
+        ref = self._assign_unique_id(ref)
+        if CONF.identity.domain_specific_drivers_enabled or True:
+            ref['id'] = "%s@%s" % (ref['id'], self._get_domain_id_for_request(context)) 
+        return ref
 
     def _assign_unique_id(self, ref):
         """Generates and assigns a unique identifer to a reference."""
