@@ -135,3 +135,24 @@ class Password(auth.AuthMethodHandler):
             raise exception.Unauthorized(msg)
 
         auth_context['user_id'] = user_info.user_id
+
+@dependency.requires('identity_api')
+class ServiceUser(auth.AuthMethodHandler):
+
+    method = "service_user"
+
+    def authenticate(self, context, auth_payload, auth_context):
+        """Try to authenticate against the identity backend."""
+        user_info = UserAuthInfo.create(auth_payload)
+
+        try:
+            self.identity_api.authenticate(
+                context,
+                user_id=auth_payload['service_user_id'],
+                password=auth_payload['service_user_password'])
+        except AssertionError:
+            # authentication failed because of invalid username or password
+            msg = _('Invalid username or password')
+            raise exception.Unauthorized(msg)
+
+        auth_context['user_id'] = user_info.user_id
