@@ -27,7 +27,7 @@ METHOD_NAME = 'password'
 LOG = log.getLogger(__name__)
 
 
-@dependency.requires('assignment_api', 'identity_api')
+@dependency.requires('assignment_api', 'identity_api','policy_api')
 class UserAuthInfo(object):
     @staticmethod
     def create(auth_payload):
@@ -112,6 +112,22 @@ class UserAuthInfo(object):
         self.user_id = user_ref['id']
         self.domain_id = domain_ref['id']
 
+    def check_policy(self, action, target):
+        role_ids = self.assignment_api.get_roles_for_user_and_domain(
+            self.user_id, self.domain_id)
+
+        roles =  [self.assignment_api.get_role(role_id) for role_id in role_ids]
+        role_names = [r['name'] for r in roles]
+        self.role_names =  role_names
+ 
+        source = {"domain_id": self.domain_id,
+                  "roles": self.role_names}
+        
+        target_dict = {"domain_id": target.domain_id}
+
+        self.policy_api.enforce(source, action, target_dict)
+
+
 
 @dependency.requires('identity_api')
 class Password(auth.AuthMethodHandler):
@@ -143,13 +159,14 @@ class ServiceUser(auth.AuthMethodHandler):
 
     def authenticate(self, context, auth_payload, auth_context):
         """Try to authenticate against the identity backend."""
-        user_info = UserAuthInfo.create(auth_payload)
-
+        service_user_info = UserAuthInfo.create(auth_payload["service"])
         try:
             self.identity_api.authenticate(
                 context,
-                user_id=auth_payload['service_user_id'],
-                password=auth_payload['service_user_password'])
+                user_id=service_user_info.user_id,
+                password=service_user_info.password)
+            user_info = UserAuthInfo.create(auth_payload)
+            service_user_info.check_policy("identity:sign_for_user_in_domain",user_info)
         except AssertionError:
             # authentication failed because of invalid username or password
             msg = _('Invalid username or password')
