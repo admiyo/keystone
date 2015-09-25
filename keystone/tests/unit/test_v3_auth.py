@@ -39,6 +39,7 @@ CONF = cfg.CONF
 
 
 class TestAuthInfo(test_v3.AuthTestMixin, testcase.TestCase):
+
     def setUp(self):
         super(TestAuthInfo, self).setUp()
         auth.controllers.load_auth_methods()
@@ -120,6 +121,7 @@ class TokenAPITests(object):
     # called by the enumerate-tests-in-file code. The way the functions get
     # resolved in Python for multiple inheritance means that a setUp in this
     # would get skipped by the testrunner.
+
     def doSetUp(self):
         r = self.v3_authenticate_token(self.build_authentication_request(
             username=self.user['name'],
@@ -422,8 +424,123 @@ class TokenAPITests(object):
             headers={'X-Subject-Token': v3_token})
         self.assertValidProjectScopedTokenResponse(r, require_catalog=False)
 
+    def _create_role(self):
+        """Call ``POST /roles``."""
+        ref = self.new_role_ref()
+        r = self.post(
+            '/roles',
+            body={'role': ref})
+        return self.assertValidRoleResponse(r, ref)
+
+    def _create_inferred_role(self, prior_id):
+        inferred = self._create_role()
+        url = '/inferred_role/%s/%s' % (prior_id, inferred['id'])
+        self.put(url)
+        return inferred
+
+    def _delete_inferred_role(self, prior_role_id, inferred_role_id):
+        url = '/inferred_role/%s/%s' % (prior_role_id, inferred_role_id)
+        self.delete(url)
+
+    def _get_scoped_token_roles(self):
+        v3_token = self.get_scoped_token()
+        r = self.get('/auth/tokens', headers={'X-Subject-Token': v3_token})
+        v3_token_data = r.result
+        token_roles = v3_token_data['token']['roles']
+        return token_roles
+
+    def test_create_inferred_role_shows_in_v3_token(self):
+        token_roles = self._get_scoped_token_roles()
+        self.assertEqual(1, len(token_roles))
+
+        prior = token_roles[0]['id']
+        inferred1 = self._create_inferred_role(prior)
+
+        token_roles = self._get_scoped_token_roles()
+        self.assertEqual(2, len(token_roles))
+
+        inferred2 = self._create_inferred_role(prior)
+        token_roles = self._get_scoped_token_roles()
+        self.assertEqual(3, len(token_roles))
+
+        token_role_ids = [role['id'] for role in token_roles]
+        self.assertIn(prior, token_role_ids)
+        self.assertIn(inferred1['id'], token_role_ids)
+        self.assertIn(inferred2['id'], token_role_ids)
+
+    def test_multiple_inferred_roles_show_in_v3_token(self):
+        token_roles = self._get_scoped_token_roles()
+        self.assertEqual(1, len(token_roles))
+
+        prior = token_roles[0]['id']
+        inferred1 = self._create_inferred_role(prior)
+        inferred2 = self._create_inferred_role(prior)
+        inferred3 = self._create_inferred_role(prior)
+
+        token_roles = self._get_scoped_token_roles()
+        self.assertEqual(4, len(token_roles))
+
+        token_role_ids = [role['id'] for role in token_roles]
+        self.assertIn(prior, token_role_ids)
+        self.assertIn(inferred1['id'], token_role_ids)
+        self.assertIn(inferred2['id'], token_role_ids)
+        self.assertIn(inferred3['id'], token_role_ids)
+
+    def test_chained_inferred_role_shows_in_v3_token(self):
+        token_roles = self._get_scoped_token_roles()
+        self.assertEqual(1, len(token_roles))
+
+        prior = token_roles[0]['id']
+        inferred1 = self._create_inferred_role(prior)
+        inferred2 = self._create_inferred_role(inferred1['id'])
+        inferred3 = self._create_inferred_role(inferred2['id'])
+
+        token_roles = self._get_scoped_token_roles()
+        self.assertEqual(4, len(token_roles))
+
+        token_role_ids = [role['id'] for role in token_roles]
+
+        self.assertIn(prior, token_role_ids)
+        self.assertIn(inferred1['id'], token_role_ids)
+        self.assertIn(inferred2['id'], token_role_ids)
+        self.assertIn(inferred3['id'], token_role_ids)
+
+    def test_delete_inferred_role_do_not_show_in_v3_token(self):
+
+        token_roles = self._get_scoped_token_roles()
+        prior = token_roles[0]['id']
+        inferred = self._create_inferred_role(prior)
+
+        token_roles = self._get_scoped_token_roles()
+        self.assertEqual(2, len(token_roles))
+        self._delete_inferred_role(prior, inferred['id'])
+
+        token_roles = self._get_scoped_token_roles()
+        self.assertEqual(1, len(token_roles))
+
+    def test_unrelated_inferred_roles_do_not_change_v3_token(self):
+
+        token_roles = self._get_scoped_token_roles()
+        prior = token_roles[0]['id']
+        inferred = self._create_inferred_role(prior)
+
+        token_roles = self._get_scoped_token_roles()
+        self.assertEqual(2, len(token_roles))
+
+        unrelated = self._create_role()
+        url = '/inferred_role/%s/%s' % (unrelated['id'], inferred['id'])
+        self.put(url)
+
+        token_roles = self._get_scoped_token_roles()
+        self.assertEqual(2, len(token_roles))
+
+        self._delete_inferred_role(unrelated['id'], inferred['id'])
+        token_roles = self._get_scoped_token_roles()
+        self.assertEqual(2, len(token_roles))
+
 
 class AllowRescopeScopedTokenDisabledTests(test_v3.RestfulTestCase):
+
     def config_overrides(self):
         super(AllowRescopeScopedTokenDisabledTests, self).config_overrides()
         self.config_fixture.config(
@@ -503,6 +620,7 @@ class AllowRescopeScopedTokenDisabledTests(test_v3.RestfulTestCase):
 
 
 class TestPKITokenAPIs(test_v3.RestfulTestCase, TokenAPITests):
+
     def config_overrides(self):
         super(TestPKITokenAPIs, self).config_overrides()
         self.config_fixture.config(group='token', provider='pki')
@@ -564,6 +682,7 @@ class TestPKITokenAPIs(test_v3.RestfulTestCase, TokenAPITests):
 
 
 class TestPKIZTokenAPIs(TestPKITokenAPIs):
+
     def config_overrides(self):
         super(TestPKIZTokenAPIs, self).config_overrides()
         self.config_fixture.config(group='token', provider='pkiz')
@@ -573,6 +692,7 @@ class TestPKIZTokenAPIs(TestPKITokenAPIs):
 
 
 class TestUUIDTokenAPIs(test_v3.RestfulTestCase, TokenAPITests):
+
     def config_overrides(self):
         super(TestUUIDTokenAPIs, self).config_overrides()
         self.config_fixture.config(group='token', provider='uuid')
@@ -593,6 +713,7 @@ class TestUUIDTokenAPIs(test_v3.RestfulTestCase, TokenAPITests):
 
 
 class TestFernetTokenAPIs(test_v3.RestfulTestCase, TokenAPITests):
+
     def config_overrides(self):
         super(TestFernetTokenAPIs, self).config_overrides()
         self.config_fixture.config(group='token', provider='fernet')
@@ -604,6 +725,7 @@ class TestFernetTokenAPIs(test_v3.RestfulTestCase, TokenAPITests):
 
 
 class TestTokenRevokeSelfAndAdmin(test_v3.RestfulTestCase):
+
     """Test token revoke using v3 Identity API by token owner and admin."""
 
     def load_sample_data(self):
@@ -750,6 +872,7 @@ class TestTokenRevokeSelfAndAdmin(test_v3.RestfulTestCase):
 
 
 class TestTokenRevokeById(test_v3.RestfulTestCase):
+
     """Test token revocation on the v3 Identity API."""
 
     def config_overrides(self):
@@ -1517,6 +1640,7 @@ class TestTokenRevokeApi(TestTokenRevokeById):
     EXTENSION_TO_ADD = 'revoke_extension'
 
     """Test token revocation on the v3 Identity API."""
+
     def config_overrides(self):
         super(TestTokenRevokeApi, self).config_overrides()
         self.config_fixture.config(group='revoke', driver='kvs')
@@ -1701,6 +1825,7 @@ class TestTokenRevokeApi(TestTokenRevokeById):
 
 
 class TestAuthExternalDisabled(test_v3.RestfulTestCase):
+
     def config_overrides(self):
         super(TestAuthExternalDisabled, self).config_overrides()
         self.config_fixture.config(
@@ -2726,6 +2851,7 @@ class TestAuthJSONExternal(test_v3.RestfulTestCase):
 
 
 class TestTrustOptional(test_v3.RestfulTestCase):
+
     def config_overrides(self):
         super(TestTrustOptional, self).config_overrides()
         self.config_fixture.config(group='trust', enabled=False)
@@ -2746,6 +2872,7 @@ class TestTrustOptional(test_v3.RestfulTestCase):
 
 
 class TestTrustRedelegation(test_v3.RestfulTestCase):
+
     """Redelegation valid and secure
 
     Redelegation is a hierarchical structure of trusts between initial trustor
@@ -4008,6 +4135,7 @@ class TestTrustAuth(test_v3.RestfulTestCase):
 
 
 class TestAPIProtectionWithoutAuthContextMiddleware(test_v3.RestfulTestCase):
+
     def test_api_protection_with_no_auth_context_in_env(self):
         auth_data = self.build_authentication_request(
             user_id=self.default_domain_user['id'],
@@ -4026,6 +4154,7 @@ class TestAPIProtectionWithoutAuthContextMiddleware(test_v3.RestfulTestCase):
 
 
 class TestAuthContext(unit.TestCase):
+
     def setUp(self):
         super(TestAuthContext, self).setUp()
         self.auth_context = auth.controllers.AuthContext()
@@ -4130,6 +4259,7 @@ class TestAuthSpecificData(test_v3.RestfulTestCase):
 
 
 class TestFernetTokenProvider(test_v3.RestfulTestCase):
+
     def setUp(self):
         super(TestFernetTokenProvider, self).setUp()
         self.useFixture(ksfixtures.KeyRepository(self.config_fixture))
@@ -4531,6 +4661,7 @@ class TestFernetTokenProvider(test_v3.RestfulTestCase):
 
 
 class TestAuthFernetTokenProvider(TestAuth):
+
     def setUp(self):
         super(TestAuthFernetTokenProvider, self).setUp()
         self.useFixture(ksfixtures.KeyRepository(self.config_fixture))

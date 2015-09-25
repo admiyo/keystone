@@ -33,6 +33,7 @@ build_os_inherit_relation = functools.partial(
 
 
 class Public(wsgi.ComposableRouter):
+
     def add_routes(self, mapper):
         tenant_controller = controllers.TenantAssignment()
         mapper.connect('/tenants',
@@ -42,6 +43,7 @@ class Public(wsgi.ComposableRouter):
 
 
 class Admin(wsgi.ComposableRouter):
+
     def add_routes(self, mapper):
         # Role Operations
         roles_controller = controllers.RoleAssignmentV2()
@@ -72,6 +74,31 @@ class Routers(wsgi.RoutersBase):
         routers.append(
             router.Router(controllers.RoleV3(), 'roles', 'role',
                           resource_descriptions=self.v3_resources))
+        inferred_roles_controller = controllers.InferredRolesV3()
+        self._add_resource(
+            mapper, inferred_roles_controller,
+            path='/inferred_roles/{prior_role_id}',
+            rel=json_home.build_v3_resource_relation('inferred_roles'),
+            # get_head_action='list_inferred_roles',
+            get_action='list_inferred_roles',
+            path_vars={
+                'prior_role_id': json_home.Parameters.PRIOR_ROLE_ID
+            }
+        )
+
+        self._add_resource(
+            mapper, inferred_roles_controller,
+            path='/inferred_role/{prior_role_id}/{inferred_role_id}',
+            # get_head_action='check_inferred_role',
+            put_action='create_inferred_role',
+            delete_action='delete_inferred_role',
+            rel=json_home.build_v3_resource_relation('inferred_role'),
+            # get_head_action='list_inferred_roles',
+            path_vars={
+                'prior_role_id': json_home.Parameters.PRIOR_ROLE_ID,
+                'inferred_role_id': json_home.Parameters.INFERRED_ROLE_ID,
+            }
+        )
 
         grant_controller = controllers.GrantAssignmentV3()
         self._add_resource(
