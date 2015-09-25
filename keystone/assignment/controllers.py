@@ -38,6 +38,7 @@ LOG = log.getLogger(__name__)
 
 @dependency.requires('assignment_api', 'identity_api', 'token_provider_api')
 class TenantAssignment(controller.V2Controller):
+
     """The V2 Project APIs that are processing assignments."""
 
     @controller.v2_deprecated
@@ -83,6 +84,7 @@ class TenantAssignment(controller.V2Controller):
 
 @dependency.requires('assignment_api', 'role_api')
 class Role(controller.V2Controller):
+
     """The Role management APIs."""
 
     @controller.v2_deprecated
@@ -124,6 +126,7 @@ class Role(controller.V2Controller):
 
 @dependency.requires('assignment_api', 'resource_api', 'role_api')
 class RoleAssignmentV2(controller.V2Controller):
+
     """The V2 Role APIs that are processing assignments."""
 
     # COMPAT(essex-3)
@@ -250,6 +253,7 @@ class RoleAssignmentV2(controller.V2Controller):
 
 @dependency.requires('assignment_api', 'resource_api')
 class ProjectAssignmentV3(controller.V3Controller):
+
     """The V3 Project APIs that are processing assignments."""
 
     collection_name = 'projects'
@@ -269,6 +273,7 @@ class ProjectAssignmentV3(controller.V3Controller):
 
 @dependency.requires('role_api')
 class RoleV3(controller.V3Controller):
+
     """The V3 Role CRUD APIs."""
 
     collection_name = 'roles'
@@ -321,9 +326,36 @@ class RoleV3(controller.V3Controller):
         self.role_api.delete_role(role_id, initiator)
 
 
+@dependency.requires('role_api')
+class ImpliedRolesV3(controller.V3Controller):
+
+    """The V3 Role CRUD APIs."""
+
+    collection_name = 'implied_roles'
+    member_name = 'implied_role'
+
+    @controller.protected()
+    def create_implied_role(self, context, prior_role_id, implied_role_id):
+        self.role_api.create_implied_role(prior_role_id, implied_role_id)
+
+    @controller.protected()
+    def delete_implied_role(self, context, prior_role_id, implied_role_id):
+        self.role_api.delete_implied_role(prior_role_id, implied_role_id)
+
+    @controller.protected()
+    def list_implied_roles(self, context, prior_role_id):
+        ref = self.role_api.list_implied_roles(prior_role_id)
+        implied_roles = [r['implied_role_id'] for r in ref]
+        results = {'prior_role_id': prior_role_id,
+                   'implied_roles': implied_roles}
+
+        return results
+
+
 @dependency.requires('assignment_api', 'identity_api', 'resource_api',
                      'role_api')
 class GrantAssignmentV3(controller.V3Controller):
+
     """The V3 Grant Assignment APIs."""
 
     collection_name = 'roles'
@@ -436,6 +468,7 @@ class GrantAssignmentV3(controller.V3Controller):
 
 @dependency.requires('assignment_api', 'identity_api', 'resource_api')
 class RoleAssignmentV3(controller.V3Controller):
+
     """The V3 Role Assignment APIs, really just list_role_assignment()."""
 
     # TODO(henry-nash): The current implementation does not provide a full

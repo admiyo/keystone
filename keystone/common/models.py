@@ -151,6 +151,19 @@ class Role(Model):
     optional_keys = tuple()
 
 
+class ImpliedRole(Model):
+    """Role object.
+
+    Required keys:
+        id
+        name
+
+    """
+
+    required_keys = ('prior_role_id', 'implied_role_id')
+    optional_keys = tuple()
+
+
 class Trust(Model):
     """Trust object.
 

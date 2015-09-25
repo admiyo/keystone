@@ -42,6 +42,7 @@ def build_v3_extension_parameter_relation(extension_name, extension_version,
 
 
 class Parameters(object):
+
     """Relationships for Common parameters."""
 
     DOMAIN_ID = build_v3_parameter_relation('domain_id')
@@ -53,9 +54,12 @@ class Parameters(object):
     ROLE_ID = build_v3_parameter_relation('role_id')
     SERVICE_ID = build_v3_parameter_relation('service_id')
     USER_ID = build_v3_parameter_relation('user_id')
+    PRIOR_ROLE_ID = build_v3_parameter_relation('prior_role_id')
+    IMPLIED_ROLE_ID = build_v3_parameter_relation('implied_role_id')
 
 
 class Status(object):
+
     """Status values supported."""
 
     DEPRECATED = 'deprecated'

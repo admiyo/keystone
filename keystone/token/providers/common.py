@@ -35,6 +35,7 @@ CONF = cfg.CONF
 
 @dependency.requires('catalog_api', 'resource_api')
 class V2TokenDataHelper(object):
+
     """Creates V2 token data."""
 
     def v3_to_v2_token(self, v3_token_data):
@@ -234,7 +235,9 @@ class V2TokenDataHelper(object):
 @dependency.requires('assignment_api', 'catalog_api', 'federation_api',
                      'identity_api', 'resource_api', 'role_api', 'trust_api')
 class V3TokenDataHelper(object):
+
     """Token data helper."""
+
     def __init__(self):
         # Keep __init__ around to ensure dependency injection works.
         super(V3TokenDataHelper, self).__init__()
@@ -270,6 +273,7 @@ class V3TokenDataHelper(object):
         if project_id:
             roles = self.assignment_api.get_roles_for_user_and_project(
                 user_id, project_id)
+
         return [self.role_api.get_role(role_id) for role_id in roles]
 
     def populate_roles_for_groups(self, token_data, group_ids,
@@ -314,6 +318,7 @@ class V3TokenDataHelper(object):
                                                          project_id,
                                                          domain_id)
         check_roles(roles, user_id, project_id, domain_id)
+
         token_data['roles'] = roles
 
     def _populate_user(self, token_data, user_id, trust):
@@ -505,6 +510,7 @@ class V3TokenDataHelper(object):
 @dependency.requires('catalog_api', 'identity_api', 'oauth_api',
                      'resource_api', 'role_api', 'trust_api')
 class BaseProvider(provider.Provider):
+
     def __init__(self, *args, **kwargs):
         super(BaseProvider, self).__init__(*args, **kwargs)
         self.v3_token_data_helper = V3TokenDataHelper()

@@ -29,6 +29,7 @@ CONF = cfg.CONF
 
 class AssignmentTestCase(test_v3.RestfulTestCase,
                          test_v3.AssignmentTestMixin):
+
     """Test domains, projects, roles and role assignments."""
 
     def setUp(self):
@@ -1790,6 +1791,7 @@ class AssignmentTestCase(test_v3.RestfulTestCase,
 
 class RoleAssignmentBaseTestCase(test_v3.RestfulTestCase,
                                  test_v3.AssignmentTestMixin):
+
     """Base class for testing /v3/role_assignments API behavior."""
 
     MAX_HIERARCHY_BREADTH = 3
@@ -1900,6 +1902,7 @@ class RoleAssignmentBaseTestCase(test_v3.RestfulTestCase,
 
 
 class RoleAssignmentFailureTestCase(RoleAssignmentBaseTestCase):
+
     """Class for testing invalid query params on /v3/role_assignments API.
 
     Querying domain and project, or user and group results in a HTTP 400, since
@@ -1934,6 +1937,7 @@ class RoleAssignmentFailureTestCase(RoleAssignmentBaseTestCase):
 
 
 class RoleAssignmentDirectTestCase(RoleAssignmentBaseTestCase):
+
     """Class for testing direct assignments on /v3/role_assignments API.
 
     Direct assignments on a domain or project have effect on them directly,
@@ -2075,6 +2079,7 @@ class RoleAssignmentDirectTestCase(RoleAssignmentBaseTestCase):
 
 
 class RoleAssignmentInheritedTestCase(RoleAssignmentDirectTestCase):
+
     """Class for testing inherited assignments on /v3/role_assignments API.
 
     Inherited assignments on a domain or project have no effect on them
@@ -2097,6 +2102,7 @@ class RoleAssignmentInheritedTestCase(RoleAssignmentDirectTestCase):
 
 
 class RoleAssignmentEffectiveTestCase(RoleAssignmentInheritedTestCase):
+
     """Class for testing inheritance effects on /v3/role_assignments API.
 
     Inherited assignments on a domain or project have no effect on them
@@ -2179,6 +2185,7 @@ class RoleAssignmentEffectiveTestCase(RoleAssignmentInheritedTestCase):
 
 class AssignmentInheritanceTestCase(test_v3.RestfulTestCase,
                                     test_v3.AssignmentTestMixin):
+
     """Test inheritance crud and its effects."""
 
     def config_overrides(self):
@@ -3081,6 +3088,7 @@ class AssignmentInheritanceTestCase(test_v3.RestfulTestCase,
 
 
 class AssignmentInheritanceDisabledTestCase(test_v3.RestfulTestCase):
+
     """Test inheritance crud and its effects."""
 
     def config_overrides(self):
@@ -3107,7 +3115,9 @@ class AssignmentInheritanceDisabledTestCase(test_v3.RestfulTestCase):
 
 
 class AssignmentV3toV2MethodsTestCase(unit.TestCase):
+
     """Test domain V3 to V2 conversion methods."""
+
     def _setup_initial_projects(self):
         self.project_id = uuid.uuid4().hex
         self.domain_id = CONF.identity.default_domain_id
@@ -3221,3 +3231,52 @@ class AssignmentV3toV2MethodsTestCase(unit.TestCase):
         self.assertDictEqual(self.project1, self.expected_project)
         self.assertDictEqual(self.project2, self.expected_project)
         self.assertDictEqual(self.project3, self.expected_project)
+
+
+class ImpliedRoleTests(test_v3.RestfulTestCase,
+                        unit.TestCase):
+
+    def _create_role(self):
+        """Call ``POST /roles``."""
+        ref = self.new_role_ref()
+        r = self.post(
+            '/roles',
+            body={'role': ref})
+        return self.assertValidRoleResponse(r, ref)
+
+    def test_list_implied_roles_none(self):
+        prior = self._create_role()
+        url = '/implied_roles/%s' % (prior['id'])
+        r = self.get(url)
+        self.assertEqual(r.result['prior_role_id'], prior['id'])
+        self.assertEqual(0, len(r.result['implied_roles']))
+
+    def _create_implied_role(self, prior, implied):
+        url = '/implied_role/%s/%s' % (prior['id'], implied['id'])
+        self.put(url)
+
+    def _delete_implied_role(self, prior, implied):
+        url = '/implied_role/%s/%s' % (prior['id'], implied['id'])
+        self.delete(url)
+
+    def test_CRUD_implied_role(self):
+        prior = self._create_role()
+        implied1 = self._create_role()
+        self._create_implied_role(prior, implied1)
+        implied2 = self._create_role()
+        self._create_implied_role(prior, implied2)
+
+        r = self.get('/implied_roles/%s' % (prior['id']))
+
+        self.assertEqual(r.result['prior_role_id'], prior['id'])
+        self.assertIn(implied1['id'], r.result['implied_roles'])
+        self.assertIn(implied2['id'], r.result['implied_roles'])
+        self.assertEqual(2, len(r.result['implied_roles']))
+
+        self._delete_implied_role(prior, implied2)
+        r = self.get('/implied_roles/%s' % (prior['id']))
+
+        self.assertEqual(r.result['prior_role_id'], prior['id'])
+        self.assertIn(implied1['id'], r.result['implied_roles'])
+        self.assertNotIn(implied2['id'], r.result['implied_roles'])
+        self.assertEqual(1, len(r.result['implied_roles']))

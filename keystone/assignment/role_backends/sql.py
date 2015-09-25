@@ -14,6 +14,8 @@ from keystone import assignment
 from keystone.common import sql
 from keystone import exception
 
+from sqlalchemy import and_
+
 
 class Role(assignment.RoleDriverV8):
 
@@ -69,6 +71,65 @@ class Role(assignment.RoleDriverV8):
         with sql.transaction() as session:
             ref = self._get_role(session, role_id)
             session.delete(ref)
+
+    @sql.handle_conflicts(conflict_type='implied_role')
+    def create_implied_role(self, prior_role_id, implied_role_id):
+        with sql.transaction() as session:
+            inference = {'prior_role_id': prior_role_id,
+                         'implied_role_id': implied_role_id
+                         }
+            ref = ImpliedRoleTable.from_dict(
+                inference, include_extra_dict=False)
+            session.add(ref)
+            return ref.to_dict(include_extra_dict=False)
+
+    @sql.handle_conflicts(conflict_type='implied_role')
+    def delete_implied_role(self, prior_role_id, implied_role_id):
+        """Deletes are role inference rule
+        :raises: keystone.exception.RoleNotFound
+
+        """
+        with sql.transaction() as session:
+            query = session.query(ImpliedRoleTable)
+            query.filter(and_(
+                ImpliedRoleTable.prior_role_id == prior_role_id,
+                ImpliedRoleTable.implied_role_id == implied_role_id))
+            refs = query.all()
+            for ref in refs:
+                # TODO(ayoung): The filters do not seem to apply. Why?
+                # This might be an
+                # Issue with SQLite.
+                if (ref.prior_role_id == prior_role_id
+                        and ref.implied_role_id == implied_role_id):
+                    session.delete(ref)
+
+    @sql.handle_conflicts(conflict_type='implied_role')
+    def list_implied_roles(self, prior_role_id):
+        with sql.transaction() as session:
+            query = session.query(
+                ImpliedRoleTable).filter(
+                    ImpliedRoleTable.prior_role_id == prior_role_id)
+            refs = query.all()
+            return [ref.to_dict(include_extra_dict=False) for ref in refs]
+
+
+class ImpliedRoleTable(sql.ModelBase, sql.DictBase):
+
+    def to_dict(self, include_extra_dict=False):
+        """Returns the model's attributes as a dictionary.
+
+        """
+        d = {}
+        for attr in self.__class__.attributes:
+            d[attr] = getattr(self, attr)
+        return d
+
+    __tablename__ = 'implied_role'
+    attributes = ['prior_role_id', 'implied_role_id']
+    prior_role_id = sql.Column(sql.String(64), primary_key=True)
+    implied_role_id = sql.Column(sql.String(64), primary_key=True)
+    __table_args__ = (
+        sql.UniqueConstraint('prior_role_id', 'implied_role_id'), {})
 
 
 class RoleTable(sql.ModelBase, sql.DictBase):
