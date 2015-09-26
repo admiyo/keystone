@@ -25,19 +25,19 @@ def upgrade(migrate_engine):
     meta = sql.MetaData()
     meta.bind = migrate_engine
 
-    inferred_roles = sql.Table(
-        'inferred_roles', meta,
+    implied_roles = sql.Table(
+        'implied_roles', meta,
         sql.Column('prior_role_id', sql.String(length=64), primary_key=True),
         sql.Column(
-            'inferred_role_id', sql.String(length=64), primary_key=True),
+            'implied_role_id', sql.String(length=64), primary_key=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8')
-    inferred_roles.create()
+    implied_roles.create()
     role = sql.Table(ROLE_TABLE, meta, autoload=True)
     fkeys = [
-        {'columns': [inferred_roles.c.prior_role_id],
+        {'columns': [implied_roles.c.prior_role_id],
          'references': [role.c.id]},
-        {'columns': [inferred_roles.c.inferred_role_id],
+        {'columns': [implied_roles.c.implied_role_id],
          'references': [role.c.id]},
     ]
     for fkey in fkeys:
