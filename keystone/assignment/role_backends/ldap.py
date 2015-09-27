@@ -80,8 +80,17 @@ class Role(assignment.RoleDriverV8):
         self.get_role(role_id)
         return self.role.update(role_id, role)
 
+    def create_implied_role(self, prior_role_id, implied_role_id):
+        raise exception.NotImplemented()  # pragma: no cover
 
-# NOTE(heny-nash): A mixin class to enable the sharing of the LDAP structure
+    def delete_implied_role(self, prior_role_id, implied_role_id):
+        raise exception.NotImplemented()  # pragma: no cover
+
+    def list_implied_roles(self, prior_role_id):
+        raise exception.NotImplemented()  # pragma: no cover
+
+
+# NOTE(henry-nash): A mixin class to enable the sharing of the LDAP structure
 # between here and the assignment LDAP.
 class RoleLdapStructureMixin(object):
     DEFAULT_OU = 'ou=Roles'

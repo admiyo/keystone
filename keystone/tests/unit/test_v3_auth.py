@@ -442,25 +442,39 @@ class TokenAPITests(object):
         url = '/implied_role/%s/%s' % (prior_role_id, implied_role_id)
         self.delete(url)
 
-    def _get_scoped_token_roles(self):
-        v3_token = self.get_scoped_token()
+    def _get_scoped_token_roles(self, is_domain=False):
+        if is_domain:
+            v3_token = self.get_domain_scoped_token()
+        else:
+            v3_token = self.get_scoped_token()
+
         r = self.get('/auth/tokens', headers={'X-Subject-Token': v3_token})
         v3_token_data = r.result
         token_roles = v3_token_data['token']['roles']
         return token_roles
 
-    def test_create_implied_role_shows_in_v3_token(self):
-        token_roles = self._get_scoped_token_roles()
+    def test_create_implied_role_shows_in_v3_project_token(self):
+        self._create_implied_role_shows_in_v3_token(False)
+
+    def test_create_implied_role_shows_in_v3_domain_token(self):
+        self.assignment_api.create_grant(self.role['id'],
+                                         user_id=self.user['id'],
+                                         domain_id=self.domain['id'])
+
+        self._create_implied_role_shows_in_v3_token(True)
+
+    def _create_implied_role_shows_in_v3_token(self, is_domain):
+        token_roles = self._get_scoped_token_roles(is_domain)
         self.assertEqual(1, len(token_roles))
 
         prior = token_roles[0]['id']
         implied1 = self._create_implied_role(prior)
 
-        token_roles = self._get_scoped_token_roles()
+        token_roles = self._get_scoped_token_roles(is_domain)
         self.assertEqual(2, len(token_roles))
 
         implied2 = self._create_implied_role(prior)
-        token_roles = self._get_scoped_token_roles()
+        token_roles = self._get_scoped_token_roles(is_domain)
         self.assertEqual(3, len(token_roles))
 
         token_role_ids = [role['id'] for role in token_roles]

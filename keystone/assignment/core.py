@@ -207,7 +207,8 @@ class Manager(manager.Manager):
         user_role_list = _get_user_domain_roles(user_id, domain_id)
         group_role_list = _get_group_domain_roles(user_id, domain_id)
         # Use set() to process the list to remove any duplicates
-        return list(set(user_role_list + group_role_list))
+        roles = self._add_implied_roles(user_role_list + group_role_list)
+        return roles
 
     def get_roles_for_groups(self, group_ids, project_id=None, domain_id=None):
         """Get a list of roles for this group on domain and/or project."""
