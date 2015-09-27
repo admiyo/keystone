@@ -482,6 +482,43 @@ class TokenAPITests(object):
         self.assertIn(implied1['id'], token_role_ids)
         self.assertIn(implied2['id'], token_role_ids)
 
+    def test_group_assigned_implied_role_shows_in_v3_token(self):
+        is_domain = False
+        token_roles = self._get_scoped_token_roles(is_domain)
+        self.assertEqual(1, len(token_roles))
+
+        new_role = self._create_role()
+        prior = new_role['id']
+
+        new_group_ref = self.new_group_ref(domain_id=self.domain['id'])
+        new_group = self.identity_api.create_group(new_group_ref)
+        self.assignment_api.create_grant(prior,
+                                         group_id=new_group['id'],
+                                         project_id=self.project['id'])
+
+        token_roles = self._get_scoped_token_roles(is_domain)
+        self.assertEqual(1, len(token_roles))
+
+        self.identity_api.add_user_to_group(self.user['id'],
+                                            new_group['id'])
+
+        token_roles = self._get_scoped_token_roles(is_domain)
+        self.assertEqual(2, len(token_roles))
+
+        implied1 = self._create_implied_role(prior)
+
+        token_roles = self._get_scoped_token_roles(is_domain)
+        self.assertEqual(3, len(token_roles))
+
+        implied2 = self._create_implied_role(prior)
+        token_roles = self._get_scoped_token_roles(is_domain)
+        self.assertEqual(4, len(token_roles))
+
+        token_role_ids = [role['id'] for role in token_roles]
+        self.assertIn(prior, token_role_ids)
+        self.assertIn(implied1['id'], token_role_ids)
+        self.assertIn(implied2['id'], token_role_ids)
+
     def test_multiple_implied_roles_show_in_v3_token(self):
         token_roles = self._get_scoped_token_roles()
         self.assertEqual(1, len(token_roles))

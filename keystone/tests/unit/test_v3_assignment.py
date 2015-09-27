@@ -3233,9 +3233,7 @@ class AssignmentV3toV2MethodsTestCase(unit.TestCase):
         self.assertDictEqual(self.project3, self.expected_project)
 
 
-class ImpliedRoleTests(test_v3.RestfulTestCase,
-                        unit.TestCase):
-
+class ImpliedRoleTests(test_v3.RestfulTestCase, unit.TestCase):
     def _create_role(self):
         """Call ``POST /roles``."""
         ref = self.new_role_ref()
