@@ -91,19 +91,23 @@ class Manager(manager.Manager):
         # roles are passed in as IDs.
         if not CONF.token.infer_roles:
             return roles
-        checked_roles = set()
-        roles_to_check = list(roles)
-        while(roles_to_check):
-            next_role = roles_to_check.pop()
-            if (next_role in checked_roles):
-                continue
-            implied_roles = self.get_implied_roles(next_role)
-            for implied_role in implied_roles:
-                implied_id = implied_role['implied_role_id']
-                if implied_id in checked_roles:
+        try:
+            checked_roles = set()
+            roles_to_check = list(roles)
+            while(roles_to_check):
+                next_role = roles_to_check.pop()
+                if (next_role in checked_roles):
                     continue
-                roles.append(implied_id)
-                roles_to_check.append(implied_id)
+                implied_roles = self.get_implied_roles(next_role)
+                for implied_role in implied_roles:
+                    implied_id = implied_role['implied_role_id']
+                    if implied_id in checked_roles:
+                        continue
+                    roles.append(implied_id)
+                    roles_to_check.append(implied_id)
+        except exception.NotImplemented:
+            pass
+
         return roles
 
     def get_roles_for_user_and_project(self, user_id, tenant_id):
