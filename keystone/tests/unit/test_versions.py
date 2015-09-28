@@ -324,6 +324,22 @@ V3_JSON_HOME_RESOURCES_INHERIT_DISABLED = {
         'href-template': '/roles/{role_id}',
         'href-vars': {
             'role_id': json_home.Parameters.ROLE_ID, }},
+    json_home.build_v3_resource_relation('implied_roles'): {
+        'href-template': '/implied_roles/{prior_role_id}',
+        'href-vars': {
+            'prior_role_id': json_home.Parameters.PRIOR_ROLE_ID
+        }},
+    json_home.build_v3_resource_relation('implied_role'): {
+        'href-template': '/implied_role/{prior_role_id}/{implied_role_id}',
+        'href-vars': {
+            'prior_role_id': json_home.Parameters.PRIOR_ROLE_ID,
+            'implied_role_id': json_home.Parameters.IMPLIED_ROLE_ID,
+        }},
+    json_home.build_v3_resource_relation('role'): {
+        'href-template': '/roles/{role_id}',
+        'href-vars': {
+            'role_id': json_home.Parameters.ROLE_ID, }},
+
     json_home.build_v3_resource_relation('role_assignments'): {
         'href': '/role_assignments'},
     json_home.build_v3_resource_relation('roles'): {'href': '/roles'},
@@ -624,6 +640,7 @@ V3_JSON_HOME_RESOURCES_INHERIT_ENABLED.update(
 
 
 class TestClient(object):
+
     def __init__(self, app=None, token=None):
         self.app = app
         self.token = token
@@ -654,6 +671,7 @@ class TestClient(object):
 
 
 class _VersionsEqual(tt_matchers.MatchesListwise):
+
     def __init__(self, expected):
         super(_VersionsEqual, self).__init__([
             tt_matchers.KeysEqual(expected),
@@ -672,6 +690,7 @@ class _VersionsEqual(tt_matchers.MatchesListwise):
 
 
 class VersionTestCase(unit.TestCase):
+
     def setUp(self):
         super(VersionTestCase, self).setUp()
         self.load_backends()
@@ -966,6 +985,7 @@ class VersionTestCase(unit.TestCase):
 
 
 class VersionSingleAppTestCase(unit.TestCase):
+
     """Tests running with a single application loaded.
 
     These are important because when Keystone is running in Apache httpd
@@ -1023,6 +1043,7 @@ class VersionSingleAppTestCase(unit.TestCase):
 
 
 class VersionInheritEnabledTestCase(unit.TestCase):
+
     def setUp(self):
         super(VersionInheritEnabledTestCase, self).setUp()
         self.load_backends()
@@ -1062,6 +1083,7 @@ class VersionInheritEnabledTestCase(unit.TestCase):
 
 
 class VersionBehindSslTestCase(unit.TestCase):
+
     def setUp(self):
         super(VersionBehindSslTestCase, self).setUp()
         self.load_backends()
