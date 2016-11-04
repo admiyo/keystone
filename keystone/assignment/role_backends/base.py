@@ -131,3 +131,72 @@ class RoleDriverBase(object):
     def list_implied_roles(self, prior_role_id):
         """List roles implied from the prior role ID."""
         raise exception.NotImplemented()  # pragma: no cover
+
+    @abc.abstractmethod
+    def create_url_pattern(self, url_pattern_id, url_pattern):
+        """Create a new url_pattern.
+
+        :raises keystone.exception.Conflict: If a duplicate url_pattern exists.
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    @abc.abstractmethod
+    def list_url_patterns(self, hints):
+        """List url_patterns in the system.
+
+        :param hints: filter hints which the driver should
+                      implement if at all possible.
+
+        :returns: a list of url_pattern_refs or an empty list.
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    @abc.abstractmethod
+    def get_url_pattern(self, url_pattern_id):
+        """Get a url_pattern by ID.
+
+        :returns: url_pattern_ref
+        :raises keystone.exception.UrlPatternNotFound: If the
+        url_pattern doesn't exist.
+
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    @abc.abstractmethod
+    def update_url_pattern(self, url_pattern_id, url_pattern):
+        """Update an existing url_pattern.
+
+        :raises keystone.exception.UrlPatternNotFound: If the
+        url_pattern doesn't exist.
+        :raises keystone.exception.Conflict: If a duplicate
+        url_pattern exists.
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    @abc.abstractmethod
+    def create_role_to_url_pattern(self, prior_role_id, url_pattern_id):
+        """Create a role inference rule.
+
+        :raises: keystone.exception.RoleNotFound: If the role doesn't exist.
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    @abc.abstractmethod
+    def delete_role_to_url_pattern(self, prior_role_id, url_pattern_id):
+        """Delete a role inference rule.
+
+        :raises keystone.exception.ImpliedRoleNotFound: If the implied role
+            doesn't exist.
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    @abc.abstractmethod
+    def list_role_to_url_patterns(self):
+        """List all the rules used to imply one role from another."""
+        raise exception.NotImplemented()  # pragma: no cover

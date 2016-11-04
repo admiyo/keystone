@@ -200,3 +200,60 @@ class RoleTable(sql.ModelBase, sql.DictBase):
                            server_default=NULL_DOMAIN_ID)
     extra = sql.Column(sql.JsonBlob())
     __table_args__ = (sql.UniqueConstraint('name', 'domain_id'),)
+
+
+class UrlPatternTable(sql.ModelBase, sql.DictBase):
+
+    __tablename__ = 'url_pattern'
+    attributes = ['id', 'service', 'verb', 'pattern']
+    id = sql.Column(sql.String(64), primary_key=True)
+
+    id = sql.Column(sql.String(length=64), primary_key=True)
+    service = sql.Column(sql.String(length=64), nullable=False)
+    verb = sql.Column(sql.String(length=64))
+    pattern = sql.Column(sql.Text, nullable=False),
+
+    @classmethod
+    def from_dict(cls, dictionary):
+        new_dictionary = dictionary.copy()
+        return cls(**new_dictionary)
+
+    def to_dict(self):
+        """Return a dictionary with model's attributes.
+
+        overrides the `to_dict` function from the base class
+        to avoid having an `extra` field.
+        """
+        d = dict()
+        for attr in self.__class__.attributes:
+            d[attr] = getattr(self, attr)
+        return d
+
+
+class RoleToUrlPatternTable(sql.ModelBase, sql.DictBase):
+    __tablename__ = 'url_to_role_pattern'
+    attributes = ['role_id', 'url_pattern_id']
+    role_id = sql.Column(
+        sql.String(64),
+        sql.ForeignKey('role.id', ondelete="CASCADE"),
+        primary_key=True)
+    url_pattern_id = sql.Column(
+        sql.String(64),
+        sql.ForeignKey('url_pattern.id', ondelete="CASCADE"),
+        primary_key=True)
+
+    @classmethod
+    def from_dict(cls, dictionary):
+        new_dictionary = dictionary.copy()
+        return cls(**new_dictionary)
+
+    def to_dict(self):
+        """Return a dictionary with model's attributes.
+
+        overrides the `to_dict` function from the base class
+        to avoid having an `extra` field.
+        """
+        d = dict()
+        for attr in self.__class__.attributes:
+            d[attr] = getattr(self, attr)
+        return d
