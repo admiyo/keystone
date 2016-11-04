@@ -1,0 +1,51 @@
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+import migrate
+import sqlalchemy as sql
+
+
+def upgrade(migrate_engine):
+    meta = sql.MetaData()
+    meta.bind = migrate_engine
+
+    url_pattern = sql.Table(
+        'url_pattern', meta,
+        sql.Column('id', sql.String(length=64), primary_key=True),
+        sql.Column('service', sql.String(length=64), nullable=False),
+        sql.Column('verb', sql.String(length=64)),
+        sql.Column('pattern', sql.Text, nullable=False),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8')
+    url_pattern.create()
+
+    role_to_url_pattern = sql.Table(
+        'role_to_url_pattern', meta,
+
+        sql.Column('role_id', sql.String(length=64), primary_key=True),
+        sql.Column(
+            'url_pattern_id', sql.String(length=64), primary_key=True),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8')
+
+    role_to_url_pattern.create()
+    role = sql.Table('role', meta, autoload=True)
+    fkeys = [
+        {'columns': [role_to_url_pattern.c.role_id],
+         'references': [role.c.id]},
+        {'columns': [role_to_url_pattern.c.url_pattern_id],
+         'references': [url_pattern.c.id]},
+    ]
+    for fkey in fkeys:
+        migrate.ForeignKeyConstraint(columns=fkey['columns'],
+                                     refcolumns=fkey['references'],
+                                     name=fkey.get('name')).create()
