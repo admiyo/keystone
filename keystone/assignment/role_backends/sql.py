@@ -144,6 +144,68 @@ class Role(base.RoleDriverBase):
                                          implied_role_id)
             return ref.to_dict()
 
+    def create_url_pattern(self, url_pattern_id, url_pattern):
+        """Create a new url_pattern.
+
+        :raises keystone.exception.Conflict: If a duplicate url_pattern exists.
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    def list_url_patterns(self, hints):
+        """List url_patterns in the system.
+
+        :param hints: filter hints which the driver should
+                      implement if at all possible.
+
+        :returns: a list of url_pattern_refs or an empty list.
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    def get_url_pattern(self, url_pattern_id):
+        """Get a url_pattern by ID.
+
+        :returns: url_pattern_ref
+        :raises keystone.exception.UrlPatternNotFound: If the
+        url_pattern doesn't exist.
+
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    def update_url_pattern(self, url_pattern_id, url_pattern):
+        """Update an existing url_pattern.
+
+        :raises keystone.exception.UrlPatternNotFound: If the
+        url_pattern doesn't exist.
+        :raises keystone.exception.Conflict: If a duplicate
+        url_pattern exists.
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    def create_role_to_url_pattern(self, prior_role_id, url_pattern_id):
+        """Create a role inference rule.
+
+        :raises: keystone.exception.RoleNotFound: If the role doesn't exist.
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    def delete_role_to_url_pattern(self, prior_role_id, url_pattern_id):
+        """Delete a role inference rule.
+
+        :raises keystone.exception.ImpliedRoleNotFound: If the implied role
+            doesn't exist.
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    def list_role_to_url_patterns(self):
+        """List all the rules used to imply one role from another."""
+        raise exception.NotImplemented()  # pragma: no cover
+
 
 class ImpliedRoleTable(sql.ModelBase, sql.DictBase):
     __tablename__ = 'implied_role'
@@ -211,7 +273,7 @@ class UrlPatternTable(sql.ModelBase, sql.DictBase):
     id = sql.Column(sql.String(length=64), primary_key=True)
     service = sql.Column(sql.String(length=64), nullable=False)
     verb = sql.Column(sql.String(length=64))
-    pattern = sql.Column(sql.Text, nullable=False),
+    pattern = sql.Column(sql.Text, nullable=False)
 
     @classmethod
     def from_dict(cls, dictionary):
@@ -231,7 +293,7 @@ class UrlPatternTable(sql.ModelBase, sql.DictBase):
 
 
 class RoleToUrlPatternTable(sql.ModelBase, sql.DictBase):
-    __tablename__ = 'url_to_role_pattern'
+    __tablename__ = 'role_to_url_pattern'
     attributes = ['role_id', 'url_pattern_id']
     role_id = sql.Column(
         sql.String(64),
