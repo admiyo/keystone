@@ -17,6 +17,7 @@ from keystone import exception
 from keystone.tests import unit
 from keystone.tests.unit.assignment import test_core
 from keystone.tests.unit.backend import core_sql
+from keystone.tests.unit.utils import wip
 
 
 class SqlRoleModels(core_sql.BaseBackendSqlModels):
@@ -129,3 +130,81 @@ class SqlRole(core_sql.BaseBackendSqlTests, test_core.RoleTests):
                           role1['id'])
         self.role_api.get_role(role2['id'])
         self.role_api.get_role(role3['id'])
+
+
+    def test_implied_role_crd(self):        
+        role1 = unit.new_role_ref(name= uuid.uuid4().hex)
+        self.role_api.create_role(role1['id'], role1)
+        role2 = unit.new_role_ref(name= uuid.uuid4().hex)
+        self.role_api.create_role(role2['id'], role2)
+        # Create
+        implied_role_created = self.role_api.create_implied_role(
+            role1['id'], role2['id'])
+        self.assertEquals(role1['id'], implied_role_created['prior_role_id'])
+        self.assertEquals(role2['id'], implied_role_created['implied_role_id'])
+
+        # Read 
+        implied_role1 = self.role_api.get_implied_role(role1['id'], role2['id'])
+        self.assertEquals(implied_role_created, implied_role1)
+        self.assertEquals(role1['id'], implied_role1['prior_role_id'])
+        self.assertEquals(role2['id'], implied_role1['implied_role_id'])
+
+
+        role3 = unit.new_role_ref(name= uuid.uuid4().hex)
+        self.role_api.create_role(role3['id'], role3)
+
+        self.assertRaises(exception.ImpliedRoleNotFound,
+                          self.role_api.get_implied_role,
+                          role1['id'], role3['id'])
+        
+        self.role_api.create_implied_role(role1['id'], role3['id'])
+        
+        implied_role2 = self.role_api.get_implied_role(role1['id'], role3['id'])
+        self.assertEquals(role1['id'], implied_role2['prior_role_id'])
+        self.assertEquals(role3['id'], implied_role2['implied_role_id'])
+
+        # Delete
+        implied_list = self.role_api.list_implied_roles(role1['id'])
+        self.assertEquals(2, len(implied_list))
+        self.assertIn(implied_role1, implied_list)
+        self.assertIn(implied_role2, implied_list)
+
+        self.role_api.delete_implied_role(role1['id'], role3['id'])
+        implied_list = self.role_api.list_implied_roles(role1['id'])
+        self.assertEquals(1, len(implied_list))
+        self.assertIn(implied_role1, implied_list)
+
+    @wip('This test does not pass yet.')
+    def test_deleting_role_removes_inference_rule(self):
+    
+        role1 = unit.new_role_ref(name= uuid.uuid4().hex)
+        self.role_api.create_role(role1['id'], role1)
+        role2 = unit.new_role_ref(name= uuid.uuid4().hex)
+        self.role_api.create_role(role2['id'], role2)
+        self.role_api.create_implied_role(role1['id'], role2['id'])
+
+        implied_role1 = self.role_api.get_implied_role(role1['id'], role2['id'])
+
+        role3 = unit.new_role_ref(name= uuid.uuid4().hex)
+        self.role_api.create_role(role3['id'], role3)        
+        self.role_api.create_implied_role(role1['id'], role3['id'])
+        
+        implied_role2 = self.role_api.get_implied_role(role1['id'], role3['id'])
+
+        implied_list = self.role_api.list_implied_roles(role1['id'])
+        self.assertEquals(2, len(implied_list))
+        self.assertIn(implied_role1, implied_list)
+        self.assertIn(implied_role2, implied_list)
+
+        self.role_api.delete_role(role3['id'])
+        implied_list = self.role_api.list_implied_roles(role1['id'])
+        self.assertEquals(1, len(implied_list))
+        self.assertIn(implied_role1, implied_list)
+        self.assertIn(implied_role2, implied_list)
+
+
+        
+        
+        
+    def test_url_pattern(self):
+        pass
