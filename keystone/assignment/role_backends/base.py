@@ -177,7 +177,6 @@ class RoleDriverBase(object):
         """
         raise exception.NotImplemented()  # pragma: no cover
 
-
     @abc.abstractmethod
     def delete_url_pattern(self, url_pattern_id):
         """Create a new url_pattern.
@@ -187,7 +186,6 @@ class RoleDriverBase(object):
         """
         raise exception.NotImplemented()  # pragma: no cover
 
-    
     @abc.abstractmethod
     def create_role_to_url_pattern(self, prior_role_id, url_pattern_id):
         """Create a role inference rule.

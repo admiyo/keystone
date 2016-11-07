@@ -17,7 +17,6 @@ from keystone import exception
 from keystone.tests import unit
 from keystone.tests.unit.assignment import test_core
 from keystone.tests.unit.backend import core_sql
-from keystone.tests.unit.utils import wip
 
 
 class SqlRoleModels(core_sql.BaseBackendSqlModels):
@@ -35,8 +34,8 @@ class SqlRoleModels(core_sql.BaseBackendSqlModels):
 
     def test_url_pattern_model(self):
         pass
-        cols = (('id',sql.String,64),
-                ('service',sql.String, 64),
+        cols = (('id', sql.String, 64),
+                ('service', sql.String, 64),
                 ('verb', sql.String, 64),
                 ('pattern', sql.Text, 0))
         self.assertExpectedSchema('url_pattern', cols)
@@ -130,5 +129,3 @@ class SqlRole(core_sql.BaseBackendSqlTests, test_core.RoleTests):
                           role1['id'])
         self.role_api.get_role(role2['id'])
         self.role_api.get_role(role3['id'])
-
-

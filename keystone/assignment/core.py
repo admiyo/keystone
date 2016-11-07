@@ -1173,4 +1173,3 @@ class RoleManager(manager.Manager):
     @manager.response_truncated
     def delete_url_pattern(self, url_pattern_id):
         return self.driver.delete_url_pattern(url_pattern_id)
-

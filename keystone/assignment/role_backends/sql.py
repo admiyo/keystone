@@ -150,7 +150,7 @@ class Role(base.RoleDriverBase):
         :raises keystone.exception.Conflict: If a duplicate url_pattern exists.
 
         """
-        # TODO ayoung: Either remove the id, or use it for the create
+        # TODO(ayoung): Either remove the id, or use it for the create
         with sql.session_for_write() as session:
             ref = UrlPatternTable.from_dict(url_pattern)
             session.add(ref)
@@ -173,10 +173,9 @@ class Role(base.RoleDriverBase):
     def _get_url_pattern(self, session, url_pattern_id):
         ref = session.query(UrlPatternTable).get(url_pattern_id)
         if ref is None:
-            raise exception.UrlPatterNotFound(role_id=role_id)
+            raise exception.UrlPatterNotFound(url_pattern_id=url_pattern_id)
         return ref
 
-        
     def get_url_pattern(self, url_pattern_id):
         """Get a url_pattern by ID.
 
@@ -197,7 +196,6 @@ class Role(base.RoleDriverBase):
         url_pattern exists.
 
         """
-
         with sql.session_for_write() as session:
             ref = self._get_url_pattern(session, url_pattern_id)
             old_dict = ref.to_dict()
@@ -213,7 +211,7 @@ class Role(base.RoleDriverBase):
         with sql.session_for_write() as session:
             ref = self._get_url_pattern(session, url_pattern_id)
             session.delete(ref)
-        
+
     def create_role_to_url_pattern(self, prior_role_id, url_pattern_id):
         """Create a role inference rule.
 
