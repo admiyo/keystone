@@ -212,26 +212,63 @@ class Role(base.RoleDriverBase):
             ref = self._get_url_pattern(session, url_pattern_id)
             session.delete(ref)
 
-    def create_role_to_url_pattern(self, prior_role_id, url_pattern_id):
+    def create_role_to_url_pattern(self, role_id, url_pattern_id):
         """Create a role inference rule.
 
         :raises: keystone.exception.RoleNotFound: If the role doesn't exist.
 
         """
-        raise exception.NotImplemented()  # pragma: no cover
+        new_ref = {'role_id': role_id,
+                   'url_pattern_id': url_pattern_id}
+        with sql.session_for_write() as session:
+            ref = RoleToUrlPatternTable.from_dict(new_ref)
+            session.add(ref)
+            return ref.to_dict()
 
-    def delete_role_to_url_pattern(self, prior_role_id, url_pattern_id):
+    def delete_role_to_url_pattern(self, role_id, url_pattern_id):
         """Delete a role inference rule.
 
         :raises keystone.exception.ImpliedRoleNotFound: If the implied role
             doesn't exist.
 
         """
-        raise exception.NotImplemented()  # pragma: no cover
+        with sql.session_for_write() as session:
+            ref = self._get_role_to_url_pattern(
+                session, role_id, url_pattern_id)
+            session.delete(ref)
 
-    def list_role_to_url_patterns(self):
+    def list_role_to_url_patterns(self, hints):
         """List all the rules used to imply one role from another."""
-        raise exception.NotImplemented()  # pragma: no cover
+        with sql.session_for_read() as session:
+            query = session.query(RoleToUrlPatternTable)
+            refs = sql.filter_limit_query(RoleToUrlPatternTable, query, hints)
+            return [ref.to_dict() for ref in refs]
+
+    def _get_role_to_url_pattern(self, session, role_id, url_pattern_id):
+        query = session.query(
+            RoleToUrlPatternTable).filter(
+                RoleToUrlPatternTable.role_id == role_id).filter(
+                    RoleToUrlPatternTable.url_pattern_id == url_pattern_id)
+        try:
+            ref = query.one()
+        except sql.NotFound:
+            raise exception.RoleToUrlPatternNotFound(
+                role_id=role_id,
+                url_pattern_id=url_pattern_id)
+        return ref
+
+    def get_role_to_url_pattern(self, role_id, url_pattern_id):
+        """Get a url_pattern by ID.
+
+        :returns: url_pattern_ref
+        :raises keystone.exception.UrlPatternNotFound: If the
+        url_pattern doesn't exist.
+
+
+        """
+        with sql.session_for_read() as session:
+            return self._get_role_to_url_pattern(session, role_id,
+                                                 url_pattern_id)
 
 
 class ImpliedRoleTable(sql.ModelBase, sql.DictBase):
@@ -346,3 +383,8 @@ class RoleToUrlPatternTable(sql.ModelBase, sql.DictBase):
         for attr in self.__class__.attributes:
             d[attr] = getattr(self, attr)
         return d
+
+        # Necessary to avoid checking 'extra'
+    def __getitem__(self, key):
+        """Evaluate if key is in extra or not, to return correct item."""
+        return getattr(self, key)

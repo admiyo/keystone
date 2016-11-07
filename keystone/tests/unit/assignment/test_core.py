@@ -273,3 +273,46 @@ class RoleTests(object):
         self.assertNotIn(url_pattern_1_gotten, all_url_patterns)
         self.assertIn(url_pattern_2_created, all_url_patterns)
         self.assertIn(url_pattern_3_created, all_url_patterns)
+
+    def test_role_to_url_pattern_crud(self):
+        list_0 = self.role_api.list_role_to_url_patterns()
+        self.assertEqual(0, len(list_0))
+
+        # Create role
+        role = unit.new_role_ref()
+        role_1_id = role['id']
+        self.role_api.create_role(role_1_id, role)
+
+        # Create url_pattern
+        service1 = uuid.uuid4().hex
+        url_pattern_ref = unit.new_url_pattern_ref()
+        url_pattern_1_id = url_pattern_ref['id']
+        url_pattern_ref['service'] = service1
+        url_pattern_1_created = self.role_api.create_url_pattern(
+            url_pattern_ref['id'], url_pattern_ref)
+
+        # Create role_to_url_pattern
+        role_to_url_pattern = self.role_api.create_role_to_url_pattern(
+            role_1_id, url_pattern_1_id)
+
+        self.assertEqual(role_to_url_pattern['role_id'], role_1_id)
+        self.assertEqual(role_to_url_pattern['url_pattern_id'],
+                         url_pattern_1_created['id'])
+
+        # Get
+        role_to_url_pattern_gotten = self.role_api.get_role_to_url_pattern(
+            role_1_id, url_pattern_1_id)
+        self.assertEqual(role_to_url_pattern_gotten['role_id'], role_1_id)
+        self.assertEqual(role_to_url_pattern_gotten['url_pattern_id'],
+                         url_pattern_1_created['id'])
+
+        # List
+        list_1 = self.role_api.list_role_to_url_patterns()
+        self.assertEqual(1, len(list_1))
+        self.assertIn(role_to_url_pattern, list_1)
+
+        # Delete
+        role_to_url_pattern = self.role_api.delete_role_to_url_pattern(
+            role_1_id, url_pattern_1_id)
+        list_2 = self.role_api.list_role_to_url_patterns()
+        self.assertEqual(0, len(list_2))

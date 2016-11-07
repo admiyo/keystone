@@ -452,6 +452,11 @@ class UrlPatternNotFound(NotFound):
     message_format = _("Could not find UrlPattern: %(url_pattern_id)s")
 
 
+class RoleToUrlPatternNotFound(NotFound):
+    message_format = _("Could not find rule to map role %(role_id)s to "
+                       "UrlPattern: %(url_pattern_id)s")
+
+
 class KeystoneConfigurationError(Exception):
     # This is an exception to be used in the case that Keystone config is
     # invalid and Keystone should not start.

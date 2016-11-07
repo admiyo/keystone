@@ -187,7 +187,7 @@ class RoleDriverBase(object):
         raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
-    def create_role_to_url_pattern(self, prior_role_id, url_pattern_id):
+    def create_role_to_url_pattern(self, ole_id, url_pattern_id):
         """Create a role inference rule.
 
         :raises: keystone.exception.RoleNotFound: If the role doesn't exist.
@@ -196,7 +196,18 @@ class RoleDriverBase(object):
         raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
-    def delete_role_to_url_pattern(self, prior_role_id, url_pattern_id):
+    def get_role_to_url_pattern(self, role_id, url_pattern_id):
+        """Get a url_pattern by ID.
+
+        :returns: url_pattern_ref
+        :raises keystone.exception.UrlPatternNotFound: If the
+        url_pattern doesn't exist.
+
+        """
+        raise exception.NotImplemented()  # pragma: no cover
+
+    @abc.abstractmethod
+    def delete_role_to_url_pattern(self, role_id, url_pattern_id):
         """Delete a role inference rule.
 
         :raises keystone.exception.ImpliedRoleNotFound: If the implied role
@@ -206,6 +217,10 @@ class RoleDriverBase(object):
         raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
-    def list_role_to_url_patterns(self):
-        """List all the rules used to imply one role from another."""
+    def list_role_to_url_patterns(self, hints):
+        """List all the rules used to imply one role from another.
+
+        :param hints: filter hints which the driver should
+           implement if at all possible.
+        """
         raise exception.NotImplemented()  # pragma: no cover
