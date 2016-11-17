@@ -1177,6 +1177,3 @@ class RoleManager(manager.Manager):
     def list_role_to_url_patterns(self, hints=None):
         return self.driver.list_role_to_url_patterns(
             hints or driver_hints.Hints())
-
-    def list_roles_for_url(self, service, verb, url_pattern):        
-        raise exception.NotImplemented()
