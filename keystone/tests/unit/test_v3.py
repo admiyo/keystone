@@ -1606,3 +1606,27 @@ class AssignmentTestMixin(object):
             **attributes_for_links)
 
         return entity
+
+    def _create_role(self):
+        """Call ``POST /roles``."""
+        ref = unit.new_role_ref()
+        r = self.post('/roles', body={'role': ref})
+        return self.assertValidRoleResponse(r, ref)
+
+    def _create_implied_role(self, prior, implied):
+        self.put('/roles/%s/implies/%s' % (prior['id'], implied['id']),
+                 expected_status=http_client.CREATED)
+
+    def _delete_implied_role(self, prior, implied):
+        self.delete('/roles/%s/implies/%s' % (prior['id'], implied['id']))
+
+    def _build_effective_role_assignments_url(self, user):
+        return '/role_assignments?effective&user.id=%(user_id)s' % {
+            'user_id': user['id']}
+
+    def _create_named_role(self, name):
+        role = unit.new_role_ref()
+        role['name'] = name
+        self.role_api.create_role(role['id'], role)
+        return role
+
