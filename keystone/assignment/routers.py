@@ -279,3 +279,22 @@ class Routers(wsgi.RoutersBase):
                     'group_id': json_home.Parameters.GROUP_ID,
                     'role_id': json_home.Parameters.ROLE_ID,
                 })
+
+            access_controller = controllers.AccessV3()
+            self._add_resource(
+                mapper, access_controller,
+                path='/access/service/{service_name}',
+                rel=json_home.build_v3_resource_relation('url_pattern'),
+                get_action='list_access_rules',
+                patch_action='modify_access_rules',
+                put_action='set_access_rules',
+                delete_action='delete_access_rules',
+                path_vars={
+                    'service_name': 'service_name',
+                })
+
+            routers.append(
+                router.Router(controllers.AccessV3(),
+                              'url_patterns',
+                              'url_pattern',
+                              resource_descriptions=self.v3_resources))

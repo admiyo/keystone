@@ -1629,4 +1629,3 @@ class AssignmentTestMixin(object):
         role['name'] = name
         self.role_api.create_role(role['id'], role)
         return role
-

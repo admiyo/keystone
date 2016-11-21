@@ -2963,3 +2963,149 @@ class ListUserProjectsTestCase(test_v3.RestfulTestCase):
             self.assertEqual(1, len(projects_result))
             self.assertEqual(self.projects[i]['id'], projects_result[0]['id'])
 
+
+def pattern_validator(*args, **kwargs):
+    pass
+
+
+def bulk_patterns_validator(*args, **kwargs):
+    pass
+
+
+class UrlPatternTests(test_v3.RestfulTestCase, test_v3.AssignmentTestMixin,
+                      unit.TestCase):
+
+    service_1_rules = {
+        'patterns': [
+            {
+                'url_pattern': '/v2/images',
+                'verbs': ['post'],
+                'role': 'member'
+            },
+            {
+                'url_pattern': '/v2/images/{image_id}',
+                'verbs': ['get', 'patch', 'delete'],
+                'role': 'member'
+            },
+            {
+                'url_pattern': '/v2/images/{image_id}/deactivate',
+                'verbs': ['post'],
+                'role': 'member'
+            },
+            {
+                'url_pattern': '/v2/images/{image_id}/reactivate',
+                'verbs': ['post'],
+                'role': 'member'
+            },
+        ]
+    }
+
+    bulk_keys_to_check = ['url_pattern', 'verbs', 'roles']
+    pattern_keys_to_check = ['pattern', 'verb', 'role_id', 'id', 'service']
+
+    def assertValidUrlPatternResponse(self, response, expected):
+        self.assertValidResponse(
+            response, 'pattern', pattern_validator,
+            keys_to_check=self.pattern_keys_to_check)
+        self.assertEqual(expected['pattern'],
+                         response.json_body['pattern']['pattern'])
+        self.assertEqual(expected['verb'],
+                         response.json_body['pattern']['verb'])
+        self.assertEqual(expected['role_id'],
+                         response.json_body['pattern']['role_id'])
+        self.assertEqual(expected['service'],
+                         response.json_body['pattern']['service'])
+
+    def test_url_pattern_crud(self):
+        member_role = unit.new_role_ref(name='member')
+        member_role_id = member_role['id']
+        self.role_api.create_role(member_role_id, member_role)
+
+        reader_role = unit.new_role_ref(name='reader')
+        reader_role_id = reader_role['id']
+        self.role_api.create_role(reader_role_id, reader_role)
+
+        pattern_1 = {
+            'pattern': '/v2/images',
+            'verb': 'post',
+            'role_id': member_role_id,
+            'service': 'image'
+        }
+
+        post_response = self.post('/url_patterns', body={'pattern': pattern_1})
+        pattern_1_id = post_response.json_body['pattern']['id']
+
+        self.assertValidUrlPatternResponse(post_response, pattern_1)
+
+        get_response = self.get('/url_patterns/%s' % pattern_1_id)
+        self.assertValidUrlPatternResponse(get_response, pattern_1)
+
+        pattern_1_updated = {
+            'pattern': {
+                'pattern': '/v2/image',
+                'verb': 'put',
+                'role_id': reader_role_id,
+                'service': 'glance',
+                'id': pattern_1_id
+            }
+        }
+        patch_response = self.patch('/url_patterns/%s' % pattern_1_id,
+                                    body=pattern_1_updated)
+
+        get_response = self.get('/url_patterns/%s' % pattern_1_id)
+        self.assertValidUrlPatternResponse(get_response,
+                                           pattern_1_updated['pattern'])
+
+        bad_pattern_1_updated = {
+            'pattern': {
+                'patter': '/v2/image',
+                'ver': 'put',
+                'role': reader_role_id,
+                'serv': 'glance',
+                'id': pattern_1_id
+            }
+        }
+        patch_response = self.patch('/url_patterns/%s' % pattern_1_id,
+                                    body=bad_pattern_1_updated,
+                                    expected_status=http_client.BAD_REQUEST)
+        pattern_1_subset = {
+            'pattern': {
+                'pattern': '/v2/pictures',
+                'id': pattern_1_id
+            }
+        }
+        patch_response = self.patch('/url_patterns/%s' % pattern_1_id,
+                                    body=pattern_1_subset)
+        pattern_1_subset_expected = {
+            'pattern': '/v2/pictures',
+            'verb': 'put',
+            'role_id': reader_role_id,
+            'service': 'glance',
+            'id': pattern_1_id
+        }
+        self.assertValidUrlPatternResponse(patch_response,
+                                           pattern_1_subset_expected)
+
+        get_response = self.get('/url_patterns/%s' % pattern_1_id)
+        self.assertValidUrlPatternResponse(get_response,
+                                           pattern_1_subset_expected)
+
+        self.delete('/url_patterns/%s' % pattern_1_id)
+        get_response = self.get('/url_patterns/%s' % pattern_1_id,
+                                expected_status=http_client.NOT_FOUND)
+
+    def test_upload_bulk_rules(self):
+
+        member_role = unit.new_role_ref(name='member')
+        member_role_id = member_role['id']
+        self.role_api.create_role(member_role_id, member_role)
+        get_response = self.get('/access/service/image')
+        self.assertValidListResponse(
+            get_response, 'patterns', pattern_validator,
+            keys_to_check=self.pattern_keys_to_check)
+
+        patch_response = self.patch('/access/service/image',
+                                    body=self.service_1_rules)
+        self.assertValidListResponse(
+            patch_response, 'patterns', bulk_patterns_validator,
+            keys_to_check=self.bulk_keys_to_check)

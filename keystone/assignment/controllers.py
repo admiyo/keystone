@@ -994,3 +994,71 @@ class RoleAssignmentV3(controller.V3Controller):
             return self.list_role_assignments_for_tree(request)
         else:
             return self.list_role_assignments(request)
+
+
+@dependency.requires('role_api')
+class AccessV3(controller.V3Controller):
+    collection_name = 'patterns'
+    member_name = 'pattern'
+
+    # TODO(ayoung) implement policy rules
+    # @controller.protected()
+    def check_access_rule(self, service, request):
+        return {}
+
+    # @controller.protected()
+    def set_access_rules(self, request, service_name, patterns):
+        ref = []
+        return AccessV3.wrap_collection(
+            request.context_dict,
+            ref
+        )
+
+    # @controller.protected()
+    def modify_access_rules(self, request, service_name, patterns):
+        ref = [{'url_pattern': 'b', 'roles': 'b',
+                'verbs': 'c', 'id': 'abcdef12'}]
+        return AccessV3.wrap_collection(
+            request.context_dict,
+            ref
+        )
+
+    # @controller.protected()
+    def list_all_access_rules(self, request):
+        return {}
+
+    # @controller.protected()
+    def list_access_rules(self, request, service_name):
+        ref = []
+
+        return AccessV3.wrap_collection(
+            request.context_dict,
+            ref
+        )
+
+    # @controller.protected()
+    # Will reset the rules to an empty list
+    def delete_access_rules(self, url_pattern_id, request):
+        return {}
+
+    def create_url_pattern(self, request, pattern):
+        pattern = self._assign_unique_id(pattern)
+        ref = self.role_api.create_url_pattern(pattern['id'], pattern)
+        return AccessV3.wrap_member(request.context_dict, ref)
+
+    def list_url_patterns(self, request):
+        return {}
+
+    def get_url_pattern(self, request, url_pattern_id):
+        ref = self.role_api.get_url_pattern(url_pattern_id)
+        return AccessV3.wrap_member(request.context_dict, ref)
+
+    def update_url_pattern(self, request, url_pattern_id, pattern):
+        ref = self.role_api.update_url_pattern(url_pattern_id, pattern)
+        return AccessV3.wrap_member(request.context_dict, ref)
+
+    def set_url_pattern(self, request, url_pattern_id, pattern):
+        return {}
+
+    def delete_url_pattern(self, request, url_pattern_id):
+        self.role_api.delete_url_pattern(url_pattern_id)

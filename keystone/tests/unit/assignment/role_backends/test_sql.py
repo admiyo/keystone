@@ -37,14 +37,9 @@ class SqlRoleModels(core_sql.BaseBackendSqlModels):
         cols = (('id', sql.String, 64),
                 ('service', sql.String, 64),
                 ('verb', sql.String, 64),
-                ('pattern', sql.Text, 0))
+                ('pattern', sql.Text, 0),
+                ('role_id', sql.String, 64),)
         self.assertExpectedSchema('url_pattern', cols)
-
-    def test_role_to_url_pattern_model(self):
-        pass
-        cols = (('role_id', sql.String, 64),
-                ('url_pattern_id', sql.String, 64))
-        self.assertExpectedSchema('role_to_url_pattern', cols)
 
 
 class SqlRole(core_sql.BaseBackendSqlTests, test_core.RoleTests):

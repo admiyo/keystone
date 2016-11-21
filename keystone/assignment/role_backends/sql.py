@@ -173,7 +173,7 @@ class Role(base.RoleDriverBase):
     def _get_url_pattern(self, session, url_pattern_id):
         ref = session.query(UrlPatternTable).get(url_pattern_id)
         if ref is None:
-            raise exception.UrlPatterNotFound(url_pattern_id=url_pattern_id)
+            raise exception.UrlPatternNotFound(url_pattern_id=url_pattern_id)
         return ref
 
     def get_url_pattern(self, url_pattern_id):
@@ -211,64 +211,6 @@ class Role(base.RoleDriverBase):
         with sql.session_for_write() as session:
             ref = self._get_url_pattern(session, url_pattern_id)
             session.delete(ref)
-
-    def create_role_to_url_pattern(self, role_id, url_pattern_id):
-        """Create a role inference rule.
-
-        :raises: keystone.exception.RoleNotFound: If the role doesn't exist.
-
-        """
-        new_ref = {'role_id': role_id,
-                   'url_pattern_id': url_pattern_id}
-        with sql.session_for_write() as session:
-            ref = RoleToUrlPatternTable.from_dict(new_ref)
-            session.add(ref)
-            return ref.to_dict()
-
-    def delete_role_to_url_pattern(self, role_id, url_pattern_id):
-        """Delete a role inference rule.
-
-        :raises keystone.exception.ImpliedRoleNotFound: If the implied role
-            doesn't exist.
-
-        """
-        with sql.session_for_write() as session:
-            ref = self._get_role_to_url_pattern(
-                session, role_id, url_pattern_id)
-            session.delete(ref)
-
-    def list_role_to_url_patterns(self, hints):
-        """List all the rules used to imply one role from another."""
-        with sql.session_for_read() as session:
-            query = session.query(RoleToUrlPatternTable)
-            refs = sql.filter_limit_query(RoleToUrlPatternTable, query, hints)
-            return [ref.to_dict() for ref in refs]
-
-    def _get_role_to_url_pattern(self, session, role_id, url_pattern_id):
-        query = session.query(
-            RoleToUrlPatternTable).filter(
-                RoleToUrlPatternTable.role_id == role_id).filter(
-                    RoleToUrlPatternTable.url_pattern_id == url_pattern_id)
-        try:
-            ref = query.one()
-        except sql.NotFound:
-            raise exception.RoleToUrlPatternNotFound(
-                role_id=role_id,
-                url_pattern_id=url_pattern_id)
-        return ref
-
-    def get_role_to_url_pattern(self, role_id, url_pattern_id):
-        """Get a url_pattern by ID.
-
-        :returns: url_pattern_ref
-        :raises keystone.exception.UrlPatternNotFound: If the
-        url_pattern doesn't exist.
-
-
-        """
-        with sql.session_for_read() as session:
-            return self._get_role_to_url_pattern(session, role_id,
-                                                 url_pattern_id)
 
 
 class ImpliedRoleTable(sql.ModelBase, sql.DictBase):
@@ -331,13 +273,14 @@ class RoleTable(sql.ModelBase, sql.DictBase):
 class UrlPatternTable(sql.ModelBase, sql.DictBase):
 
     __tablename__ = 'url_pattern'
-    attributes = ['id', 'service', 'verb', 'pattern']
+    attributes = ['id', 'service', 'verb', 'pattern', 'role_id']
     id = sql.Column(sql.String(64), primary_key=True)
 
     id = sql.Column(sql.String(length=64), primary_key=True)
     service = sql.Column(sql.String(length=64), nullable=False)
     verb = sql.Column(sql.String(length=64))
     pattern = sql.Column(sql.Text, nullable=False)
+    role_id = sql.Column(sql.String(length=64))
 
     @classmethod
     def from_dict(cls, dictionary):
@@ -354,37 +297,3 @@ class UrlPatternTable(sql.ModelBase, sql.DictBase):
         for attr in self.__class__.attributes:
             d[attr] = getattr(self, attr)
         return d
-
-
-class RoleToUrlPatternTable(sql.ModelBase, sql.DictBase):
-    __tablename__ = 'role_to_url_pattern'
-    attributes = ['role_id', 'url_pattern_id']
-    role_id = sql.Column(
-        sql.String(64),
-        sql.ForeignKey('role.id', ondelete="CASCADE"),
-        primary_key=True)
-    url_pattern_id = sql.Column(
-        sql.String(64),
-        sql.ForeignKey('url_pattern.id', ondelete="CASCADE"),
-        primary_key=True)
-
-    @classmethod
-    def from_dict(cls, dictionary):
-        new_dictionary = dictionary.copy()
-        return cls(**new_dictionary)
-
-    def to_dict(self):
-        """Return a dictionary with model's attributes.
-
-        overrides the `to_dict` function from the base class
-        to avoid having an `extra` field.
-        """
-        d = dict()
-        for attr in self.__class__.attributes:
-            d[attr] = getattr(self, attr)
-        return d
-
-        # Necessary to avoid checking 'extra'
-    def __getitem__(self, key):
-        """Evaluate if key is in extra or not, to return correct item."""
-        return getattr(self, key)

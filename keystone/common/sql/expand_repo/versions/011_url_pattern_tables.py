@@ -24,26 +24,15 @@ def upgrade(migrate_engine):
         sql.Column('service', sql.String(length=64), nullable=False),
         sql.Column('verb', sql.String(length=64)),
         sql.Column('pattern', sql.Text, nullable=False),
+        sql.Column('role_id', sql.String(length=64), primary_key=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8')
     url_pattern.create()
 
-    role_to_url_pattern = sql.Table(
-        'role_to_url_pattern', meta,
-
-        sql.Column('role_id', sql.String(length=64), primary_key=True),
-        sql.Column(
-            'url_pattern_id', sql.String(length=64), primary_key=True),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8')
-
-    role_to_url_pattern.create()
     role = sql.Table('role', meta, autoload=True)
     fkeys = [
-        {'columns': [role_to_url_pattern.c.role_id],
+        {'columns': [url_pattern.c.role_id],
          'references': [role.c.id]},
-        {'columns': [role_to_url_pattern.c.url_pattern_id],
-         'references': [url_pattern.c.id]},
     ]
     for fkey in fkeys:
         migrate.ForeignKeyConstraint(columns=fkey['columns'],

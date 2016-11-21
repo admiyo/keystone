@@ -410,6 +410,8 @@ def new_url_pattern_ref(**kwargs):
         'service': uuid.uuid4().hex,
         'verb': uuid.uuid4().hex,
         'pattern': uuid.uuid4().hex,
+        'role_id': uuid.uuid4().hex,
+
     }
     ref.update(kwargs)
     return ref
