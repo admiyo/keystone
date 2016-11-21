@@ -3094,6 +3094,24 @@ class UrlPatternTests(test_v3.RestfulTestCase, test_v3.AssignmentTestMixin,
         get_response = self.get('/url_patterns/%s' % pattern_1_id,
                                 expected_status=http_client.NOT_FOUND)
 
+        for rule in self.service_1_rules['patterns']:
+            for verb in rule['verbs']:
+                new_pattern = {
+                    'pattern': rule['url_pattern'],
+                    'verb': verb,
+                    'role_id': member_role_id,
+                    'service': 'image'
+                }
+                post_response = self.post('/url_patterns',
+                                          body={'pattern': new_pattern})
+                self.assertValidUrlPatternResponse(post_response,
+                                                   new_pattern)
+        list_response = self.get('/url_patterns')
+        self.assertValidListResponse(
+            list_response, 'patterns', pattern_validator,
+            keys_to_check=self.pattern_keys_to_check)
+        self.assertEqual(6, len(list_response.json_body['patterns']))
+
     def test_upload_bulk_rules(self):
 
         member_role = unit.new_role_ref(name='member')

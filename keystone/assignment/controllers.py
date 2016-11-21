@@ -1047,7 +1047,8 @@ class AccessV3(controller.V3Controller):
         return AccessV3.wrap_member(request.context_dict, ref)
 
     def list_url_patterns(self, request):
-        return {}
+        ref = self.role_api.list_url_patterns()
+        return AccessV3.wrap_collection(request.context_dict, ref)
 
     def get_url_pattern(self, request, url_pattern_id):
         ref = self.role_api.get_url_pattern(url_pattern_id)
@@ -1056,9 +1057,6 @@ class AccessV3(controller.V3Controller):
     def update_url_pattern(self, request, url_pattern_id, pattern):
         ref = self.role_api.update_url_pattern(url_pattern_id, pattern)
         return AccessV3.wrap_member(request.context_dict, ref)
-
-    def set_url_pattern(self, request, url_pattern_id, pattern):
-        return {}
 
     def delete_url_pattern(self, request, url_pattern_id):
         self.role_api.delete_url_pattern(url_pattern_id)
