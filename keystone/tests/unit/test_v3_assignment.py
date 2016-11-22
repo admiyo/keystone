@@ -10,6 +10,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import copy
 import datetime
 import random
 import uuid
@@ -2979,28 +2980,28 @@ class UrlPatternTests(test_v3.RestfulTestCase, test_v3.AssignmentTestMixin,
         'patterns': [
             {
                 'url_pattern': '/v2/images',
-                'verbs': ['post'],
+                'verbs': [u'post'],
                 'role': 'member'
             },
             {
                 'url_pattern': '/v2/images/{image_id}',
-                'verbs': ['get', 'patch', 'delete'],
+                'verbs': [u'delete', u'get', u'patch'],
                 'role': 'member'
             },
             {
                 'url_pattern': '/v2/images/{image_id}/deactivate',
-                'verbs': ['post'],
+                'verbs': [u'post'],
                 'role': 'member'
             },
             {
                 'url_pattern': '/v2/images/{image_id}/reactivate',
-                'verbs': ['post'],
+                'verbs': [u'post'],
                 'role': 'member'
             },
         ]
     }
 
-    bulk_keys_to_check = ['url_pattern', 'verbs', 'roles']
+    bulk_keys_to_check = ['url_pattern', 'verbs', 'role']
     pattern_keys_to_check = ['pattern', 'verb', 'role_id', 'id', 'service']
 
     def assertValidUrlPatternResponse(self, response, expected):
@@ -3112,18 +3113,62 @@ class UrlPatternTests(test_v3.RestfulTestCase, test_v3.AssignmentTestMixin,
             keys_to_check=self.pattern_keys_to_check)
         self.assertEqual(6, len(list_response.json_body['patterns']))
 
+    def _assert_bulk_rules_response(self, response, expected):
+        self.assertValidListResponse(
+            response, 'patterns', pattern_validator,
+            keys_to_check=self.bulk_keys_to_check)
+
+        self.assertEqual(len(expected['patterns']),
+                         len(response.json_body['patterns']))
+        matches = dict()
+        for pattern in expected['patterns']:
+            key = (pattern['url_pattern'], pattern['role'])
+            matches[key] = pattern
+
+        for response_pattern in response.json_body['patterns']:
+            key = (response_pattern['url_pattern'],
+                   response_pattern['role'])
+            try:
+                expected_pattern = matches[key]
+            except KeyError:
+                self.fail(
+                    'access list has value not in expected set (%s , %s).'
+                    % key)
+            self.assertEqual(expected_pattern['verbs'],
+                             response_pattern['verbs'])
+
     def test_upload_bulk_rules(self):
 
         member_role = unit.new_role_ref(name='member')
         member_role_id = member_role['id']
         self.role_api.create_role(member_role_id, member_role)
         get_response = self.get('/access/service/image')
-        self.assertValidListResponse(
-            get_response, 'patterns', pattern_validator,
-            keys_to_check=self.pattern_keys_to_check)
+        expected_empty = {
+            'patterns': []
+        }
 
-        patch_response = self.patch('/access/service/image',
-                                    body=self.service_1_rules)
+        self._assert_bulk_rules_response(get_response, expected_empty)
+
+        self.put('/access/service/image', body=self.service_1_rules)
+
+        expected = copy.copy(self.service_1_rules)
+
+        get_response = self.get('/access/service/image')
+        self._assert_bulk_rules_response(get_response, expected)
+
+        list_response = self.get('/url_patterns')
         self.assertValidListResponse(
-            patch_response, 'patterns', bulk_patterns_validator,
-            keys_to_check=self.bulk_keys_to_check)
+            list_response, 'patterns', pattern_validator,
+            keys_to_check=self.pattern_keys_to_check)
+        self.assertEqual(6, len(list_response.json_body['patterns']))
+
+        self.delete('/access/service/image')
+
+        get_response = self.get('/access/service/image')
+        self._assert_bulk_rules_response(get_response, expected_empty)
+
+        list_response = self.get('/url_patterns')
+        self.assertValidListResponse(
+            list_response, 'patterns', pattern_validator,
+            keys_to_check=self.pattern_keys_to_check)
+        self.assertEqual(0, len(list_response.json_body['patterns']))

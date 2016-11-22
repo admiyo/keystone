@@ -1001,18 +1001,28 @@ class AccessV3(controller.V3Controller):
     collection_name = 'patterns'
     member_name = 'pattern'
 
-    # TODO(ayoung) implement policy rules
-    # @controller.protected()
-    def check_access_rule(self, service, request):
-        return {}
+    def _delete_old_patterns_for_service(self, service_name):
+        for pattern in self.role_api.list_url_patterns():
+            if pattern['service'] == service_name:
+                self.role_api.delete_url_pattern(pattern['id'])
 
     # @controller.protected()
-    def set_access_rules(self, request, service_name, patterns):
-        ref = []
-        return AccessV3.wrap_collection(
-            request.context_dict,
-            ref
-        )
+    def put_access_rules(self, request, service_name, patterns):
+        # TODO(ayoung) Move this logic to the manager
+        self._delete_old_patterns_for_service(service_name)
+
+        role_name_to_id = {role['name']: role['id']
+                           for role in self.role_api.list_roles()}
+        for pattern in patterns:
+            for verb in pattern['verbs']:
+                new_pattern = self._assign_unique_id({
+                    'pattern': pattern['url_pattern'],
+                    'verb': verb,
+                    'role_id': role_name_to_id[pattern['role']],
+                    'service': service_name
+                })
+                self.role_api.create_url_pattern(
+                    new_pattern['id'], new_pattern)
 
     # @controller.protected()
     def modify_access_rules(self, request, service_name, patterns):
@@ -1024,12 +1034,39 @@ class AccessV3(controller.V3Controller):
         )
 
     # @controller.protected()
+    # TODO(ayoung) implement
     def list_all_access_rules(self, request):
         return {}
 
+    def _add_pattern_to_access_list(self, access_list, pattern):
+        key = (pattern['pattern'], pattern['role_id'])
+        existing_pattern = access_list.get(key)
+        if existing_pattern:
+            verbs = existing_pattern['verbs']
+            verbs.append(pattern['verb'])
+            verbs.sort()
+            existing_pattern['verbs'] = verbs
+        else:
+            new_pattern = {
+                'id': pattern['id'],
+                'url_pattern': pattern['pattern'],
+                'verbs': [pattern['verb']],
+                'role': self.role_api.get_role(pattern['role_id'])['name']
+            }
+            access_list[key] = new_pattern
+
+        return access_list
+
     # @controller.protected()
     def list_access_rules(self, request, service_name):
-        ref = []
+        access_list = dict()
+
+        for pattern in self.role_api.list_url_patterns():
+            if pattern['service'] == service_name:
+                access_list = self._add_pattern_to_access_list(
+                    access_list, pattern)
+
+        ref = access_list.values()
 
         return AccessV3.wrap_collection(
             request.context_dict,
@@ -1038,8 +1075,8 @@ class AccessV3(controller.V3Controller):
 
     # @controller.protected()
     # Will reset the rules to an empty list
-    def delete_access_rules(self, url_pattern_id, request):
-        return {}
+    def delete_access_rules(self, request, service_name):
+        self._delete_old_patterns_for_service(service_name)
 
     def create_url_pattern(self, request, pattern):
         pattern = self._assign_unique_id(pattern)

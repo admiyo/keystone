@@ -287,7 +287,7 @@ class Routers(wsgi.RoutersBase):
                 rel=json_home.build_v3_resource_relation('url_pattern'),
                 get_action='list_access_rules',
                 patch_action='modify_access_rules',
-                put_action='set_access_rules',
+                put_action='put_access_rules',
                 delete_action='delete_access_rules',
                 path_vars={
                     'service_name': 'service_name',
